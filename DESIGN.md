@@ -25,8 +25,27 @@ exposes no D-Bus interface — only a CLI (`bootc status --json`, `bootc upgrade
 and rebuilding it on `cockpit.spawn()` calls, at which point little of the original
 module survives beyond incidental UI markup.
 
-Not independently verified against an upstream cockpit-ostree maintainer statement —
-this is our own architectural read, not a cited decision from the cockpit-ostree project.
+This is now confirmed against an actual upstream decision, not just our own read.
+[cockpit-ostree#300](https://github.com/cockpit-project/cockpit-ostree/issues/300)
+("support ostree native containers (container as OS)", filed 2022-12-06, still open
+as of 2026-06) is the closest upstream discussion of native-container/bootc-adjacent
+support. A cockpit-project member (`garrett`) wrote directly in the issue body:
+
+> Related, but a little different: https://github.com/containers/bootc (we'll likely
+> keep our integration point at rpm-ostree)
+
+No further bootc-specific discussion happened on that issue after 2022-12-13, and no
+later cockpit-ostree or cockpit-project issue revisits the position (checked via
+`gh issue list --search bootc` across both repos, June 2026). One genuinely new data
+point this surfaced: [cockpit#21201](https://github.com/cockpit-project/cockpit/issues/21201)
+was a *core* Cockpit bug (cockpit-session running setuid, wrong file ownership on
+bootc-deployed images) fixed in Cockpit 330 — that's a packaging/compatibility fix so
+Cockpit itself runs cleanly on a bootc image, not a feature module for managing bootc
+updates. It doesn't change the analysis above.
+
+Also checked the Cockpit blog (cockpit-project.org/blog, posts through Cockpit 363 /
+2026-06-04) for any newer module announcement — none found covering bootc, "image
+mode," or OS-image update management as of this writing.
 
 ### Extend cockpit-packagekit (Updates page)
 
@@ -37,6 +56,13 @@ is no package list to reconcile. The two are different update *paradigms*, not t
 backends for the same one; bolting bootc support onto the existing Updates page would
 require either faking a package-list abstraction over an atomic image swap, or
 branching the UI so heavily that it stops being one cohesive module.
+
+Unlike the cockpit-ostree case, this reasoning is **not** backed by a found upstream
+citation — searches of cockpit-project/cockpit issues for "bootc" and "image mode"
+turned up only unrelated bug reports (e.g. a CentOS 10 image-mode storage *test*
+failure, cockpit#23295), nothing discussing or rejecting bootc support in the Updates
+page specifically. Treat this section as architectural inference, not a confirmed
+upstream position.
 
 ### Build a new module from the Cockpit Starter Kit (chosen)
 

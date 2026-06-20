@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>org.cockpit_project.cockpit_bootc</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>bootc Image Updates</name>
+  <summary>Manage bootc image updates and rollbacks from Cockpit</summary>
+  <description>
+    <p>
+      Provides a Cockpit interface for managing bootc-based system image
+      updates and rollbacks. Shows current, staged, and rollback image
+      information and allows triggering updates and rollbacks without
+      using the command line.
+    </p>
+  </description>
+  <extends>org.cockpit_project.cockpit</extends>
+  <launchable type="cockpit-manifest">cockpit-bootc</launchable>
+</component>

@@ -15,19 +15,16 @@ export async function getStatus() {
 /**
  * Check for an available update without downloading.
  * Returns true if an update is available, false if already up to date.
+ *
+ * bootc always exits 0 here regardless of outcome — it prints "No changes
+ * in: <ref>" to stdout when there's nothing new, so that's the only signal.
  */
 export async function checkForUpdates() {
-    try {
-        await cockpit.spawn(
-            ["bootc", "upgrade", "--check"],
-            { superuser: "require", err: "message" }
-        );
-        return true;
-    } catch (ex) {
-        // exit code 77 means no update available
-        if (ex.exit_status === 77) return false;
-        throw ex;
-    }
+    const output = await cockpit.spawn(
+        ["bootc", "upgrade", "--check"],
+        { superuser: "require", err: "message" }
+    );
+    return !output.includes("No changes in");
 }
 
 /**

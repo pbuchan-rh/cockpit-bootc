@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
+import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
 import { Skeleton } from "@patternfly/react-core/dist/esm/components/Skeleton/index.js";
 
 import {
     getStatus,
+    checkForUpdates,
     stageUpdate,
     applyUpdate,
     stageRollback,
@@ -17,6 +20,7 @@ import {
 import { ImageStatus } from './components/ImageStatus.jsx';
 import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
+import { UpdateActions } from './components/UpdateActions.jsx';
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -36,6 +40,8 @@ export const App = () => {
     const [progress, setProgress] = useState([]);
     const [rebootModal, setRebootModal] = useState(null); // 'update' | 'rollback' | null
     const [autoUpdateStatus, setAutoUpdateStatus] = useState('unknown');
+    const [checking, setChecking] = useState(false);
+    const [updateAvailable, setUpdateAvailable] = useState(null);
 
     const loadStatus = useCallback(async () => {
         setLoading(true);
@@ -58,6 +64,19 @@ export const App = () => {
         loadStatus();
     }, [loadStatus]);
 
+    async function handleCheckForUpdates() {
+        setChecking(true);
+        setError(null);
+        try {
+            const available = await checkForUpdates();
+            setUpdateAvailable(available);
+        } catch (ex) {
+            setError(ex.message);
+        } finally {
+            setChecking(false);
+        }
+    }
+
     async function handleDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
         setProgress([]);
@@ -66,6 +85,7 @@ export const App = () => {
             await stageUpdate(line => setProgress(p => [...p, line]));
             await loadStatus();
             setPhase(PHASE.DOWNLOADED);
+            setUpdateAvailable(null);
         } catch (ex) {
             setError(ex.message);
             setPhase(PHASE.IDLE);
@@ -141,13 +161,35 @@ export const App = () => {
                     </Alert>
                 )}
 
+                <Card>
+                    <CardBody>
+                        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                            <FlexItem>
+                                <AutoUpdate
+                                    status={autoUpdateStatus}
+                                    onToggle={handleAutoUpdateToggle}
+                                />
+                            </FlexItem>
+                            <FlexItem>
+                                <UpdateActions
+                                    updateAvailable={updateAvailable}
+                                    checking={checking}
+                                    downloading={phase === PHASE.DOWNLOADING}
+                                    disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED || phase === PHASE.DOWNLOADED || !!status?.staged}
+                                    onCheckForUpdates={handleCheckForUpdates}
+                                    onDownloadUpdate={handleDownloadUpdate}
+                                />
+                            </FlexItem>
+                        </Flex>
+                    </CardBody>
+                </Card>
+
                 {status && (
                     <ImageStatus
                         booted={status.booted}
                         staged={status.staged}
                         rollback={status.rollback}
                         phase={phase}
-                        onDownloadUpdate={handleDownloadUpdate}
                         onConfirmUpdate={() => setRebootModal('update')}
                         onRollback={handleRollback}
                         onConfirmReboot={() => setRebootModal('rollback')}
@@ -157,11 +199,6 @@ export const App = () => {
                 {progress.length > 0 && (
                     <ProgressLog lines={progress} />
                 )}
-
-                <AutoUpdate
-                    status={autoUpdateStatus}
-                    onToggle={handleAutoUpdateToggle}
-                />
             </PageSection>
 
             <Modal

@@ -72,7 +72,6 @@ export const ImageStatus = ({
     staged,
     rollback,
     phase,
-    onDownloadUpdate,
     onConfirmUpdate,
     onRollback,
     onConfirmReboot,
@@ -111,18 +110,6 @@ export const ImageStatus = ({
                 <CardBody>
                     <ImageInfo data={bootedData} />
                 </CardBody>
-                <CardFooter>
-                    {!staged && !isDownloaded && (
-                        <Button
-                            variant="primary"
-                            onClick={onDownloadUpdate}
-                            isDisabled={isBusy || isRollbackStaged}
-                            isLoading={isDownloading}
-                        >
-                            {isDownloading ? "Downloading…" : "Download Update"}
-                        </Button>
-                    )}
-                </CardFooter>
             </Card>
 
             {/* Staged update */}

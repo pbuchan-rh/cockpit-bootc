@@ -1,1 +1,28 @@
 @use "page.scss";
+
+// PF6's default PageSection has no background unless variant="secondary" is set,
+// and Card ships with border: 0 (relies on bg contrast, not a literal border).
+// Without this, cards have zero visual separation from the page or each other.
+.pf-v6-c-page__main-section {
+    background-color: var(--pf-t--global--background--color--secondary--default);
+    gap: var(--pf-t--global--spacer--lg);
+}
+
+.pf-v6-c-card {
+    border: 1px solid var(--pf-t--global--border--color--default);
+    border-radius: 16px;
+}
+
+.pf-v6-c-card .pf-v6-c-card__body {
+    padding-block-start: var(--pf-t--global--spacer--sm);
+    padding-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.pf-v6-c-description-list {
+    --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--xs);
+}
+
+.ct-progress-log {
+    max-height: 16rem;
+    overflow-y: auto;
+}

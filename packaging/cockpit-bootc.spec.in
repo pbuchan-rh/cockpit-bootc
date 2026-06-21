@@ -1,7 +1,7 @@
-Name: cockpit-starter-kit
+Name: cockpit-bootc
 Version: %{VERSION}
 Release: 1%{?dist}
-Summary: Cockpit Starter Kit Example Module
+Summary: Cockpit UI for bootc image updates and rollbacks
 License: LGPL-2.1-or-later
 
 # distributions which ship nodejs-esbuild can rebuild the bundle during package build
@@ -9,8 +9,8 @@ License: LGPL-2.1-or-later
 %define rebuild_bundle 1
 %endif
 
-Source0: https://github.com/cockpit-project/starter-kit/releases/download/%{version}/%{name}-%{version}.tar.xz
-Source1: https://github.com/cockpit-project/starter-kit/releases/download/%{version}/%{name}-node-%{version}.tar.xz
+Source0: http://git.beastmode.localdomain:3000/admin/cockpit-bootc/releases/download/%{version}/%{name}-%{version}.tar.xz
+Source1: http://git.beastmode.localdomain:3000/admin/cockpit-bootc/releases/download/%{version}/%{name}-node-%{version}.tar.xz
 
 BuildArch: noarch
 %if ! 0%{?suse_version}
@@ -33,11 +33,14 @@ BuildRequires: nodejs-esbuild
 %endif
 
 Requires: cockpit-bridge
+Requires: bootc
 
 %{NPM_PROVIDES}
 
 %description
-Cockpit Starter Kit Example Module
+Provides a Cockpit interface for managing bootc-based system image updates and
+rollbacks. Shows current, staged, and rollback image information and allows
+triggering updates and rollbacks without using the command line.
 
 %prep
 %autosetup -n %{name}

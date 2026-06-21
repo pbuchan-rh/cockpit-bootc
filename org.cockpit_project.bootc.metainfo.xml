@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="addon">
-  <id>org.cockpit_project.cockpit_bootc</id>
+  <id>org.cockpit_project.bootc</id>
   <metadata_license>CC0-1.0</metadata_license>
   <name>bootc Image Updates</name>
   <summary>Manage bootc image updates and rollbacks from Cockpit</summary>
@@ -13,5 +13,5 @@
     </p>
   </description>
   <extends>org.cockpit_project.cockpit</extends>
-  <launchable type="cockpit-manifest">cockpit-bootc</launchable>
+  <launchable type="cockpit-manifest">bootc</launchable>
 </component>

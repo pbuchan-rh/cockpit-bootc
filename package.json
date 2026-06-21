@@ -1,9 +1,9 @@
 {
-  "name": "cockpit-bootc",
-  "description": "Scaffolding for a cockpit module",
+  "name": "bootc",
+  "description": "Cockpit UI for managing bootc image updates and rollbacks",
   "type": "module",
   "main": "index.js",
-  "repository": "git@github.com:cockpit/starter-kit.git",
+  "repository": "http://git.beastmode.localdomain:3000/admin/cockpit-bootc.git",
   "author": "",
   "license": "LGPL-2.1",
   "engines": {

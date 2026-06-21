@@ -1,0 +1,106 @@
+import React, { useState } from 'react';
+import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
+import { Card, CardBody, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
+import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
+import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
+import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
+
+function formatDigest(digest) {
+    if (!digest) return null;
+    const hash = digest.startsWith("sha256:") ? digest.slice(7) : digest;
+    return "sha256:" + hash.slice(0, 12) + "…";
+}
+
+export const SwitchImage = ({
+    recentRefs,
+    switching,
+    disabled,
+    onSwitch,
+    previewing,
+    preview,
+    previewError,
+    onPreview,
+}) => {
+    const [ref, setRef] = useState('');
+
+    return (
+        <Card>
+            <CardTitle>Switch Image</CardTitle>
+            <CardBody>
+                <Flex alignItems={{ default: 'alignItemsFlexEnd' }}>
+                    {recentRefs.length > 0 && (
+                        <FlexItem>
+                            <FormSelect
+                                aria-label="Recent image references"
+                                value=""
+                                onChange={(_event, value) => { if (value) setRef(value); }}
+                            >
+                                <FormSelectOption value="" label="Recent…" />
+                                {recentRefs.map(r => <FormSelectOption key={r} value={r} label={r} />)}
+                            </FormSelect>
+                        </FlexItem>
+                    )}
+                    <FlexItem grow={{ default: 'grow' }}>
+                        <TextInput
+                            type="text"
+                            value={ref}
+                            onChange={(_event, value) => setRef(value)}
+                            placeholder="registry.example.com/namespace/image:tag"
+                            aria-label="Image reference"
+                        />
+                    </FlexItem>
+                    <FlexItem>
+                        <Button
+                            variant="link"
+                            onClick={() => onPreview(ref)}
+                            isDisabled={disabled || previewing || !ref.trim()}
+                            isLoading={previewing}
+                        >
+                            {previewing ? "Inspecting…" : "Preview"}
+                        </Button>
+                    </FlexItem>
+                    <FlexItem>
+                        <Button
+                            variant="secondary"
+                            onClick={() => onSwitch(ref)}
+                            isDisabled={disabled || switching || !ref.trim()}
+                            isLoading={switching}
+                        >
+                            {switching ? "Switching…" : "Switch"}
+                        </Button>
+                    </FlexItem>
+                </Flex>
+
+                {previewError && (
+                    <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
+                )}
+
+                {preview && !previewError && (
+                    <DescriptionList isCompact isHorizontal className="ct-switch-preview">
+                        <DescriptionListGroup>
+                            <DescriptionListTerm>Version</DescriptionListTerm>
+                            <DescriptionListDescription>{preview.version || "Unknown"}</DescriptionListDescription>
+                        </DescriptionListGroup>
+                        <DescriptionListGroup>
+                            <DescriptionListTerm>Digest</DescriptionListTerm>
+                            <DescriptionListDescription>
+                                <code title={preview.digest}>{formatDigest(preview.digest)}</code>
+                            </DescriptionListDescription>
+                        </DescriptionListGroup>
+                        <DescriptionListGroup>
+                            <DescriptionListTerm>Created</DescriptionListTerm>
+                            <DescriptionListDescription>
+                                {preview.created ? new Date(preview.created).toLocaleString() : "Unknown"}
+                            </DescriptionListDescription>
+                        </DescriptionListGroup>
+                        <DescriptionListGroup>
+                            <DescriptionListTerm>Architecture</DescriptionListTerm>
+                            <DescriptionListDescription>{preview.architecture || "Unknown"}</DescriptionListDescription>
+                        </DescriptionListGroup>
+                    </DescriptionList>
+                )}
+            </CardBody>
+        </Card>
+    );
+};

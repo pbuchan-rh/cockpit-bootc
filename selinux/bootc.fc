@@ -1,0 +1,18 @@
+# cockpit-bootc SELinux file context definitions
+#
+# Assigns cockpit_var_lib_t to all cockpit-bootc runtime data.
+# This type is used by cockpit for its own /var/lib/cockpit/ data and
+# grants the cockpit bridge process the read/write access it needs.
+#
+# Paths covered:
+#   /var/lib/cockpit-bootc/             Root data directory
+#   /var/lib/cockpit-bootc/settings.json   Recent image refs for bootc switch
+#
+# Applied at install time by the RPM's %post scriptlet:
+#   semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-bootc(/.*)?'
+#   restorecon -Rv /var/lib/cockpit-bootc
+#
+# Verify applied contexts with:
+#   ls -laZ /var/lib/cockpit-bootc
+
+/var/lib/cockpit-bootc(/.*)?		gen_context(system_u:object_r:cockpit_var_lib_t,s0)

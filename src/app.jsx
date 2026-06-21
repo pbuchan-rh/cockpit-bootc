@@ -15,12 +15,17 @@ import {
     stageRollback,
     reboot,
     getAutoUpdateStatus,
+    switchImage,
+    inspectImage,
+    getSettings,
+    addRecentRef,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
 import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
+import { SwitchImage } from './components/SwitchImage.jsx';
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -42,17 +47,25 @@ export const App = () => {
     const [autoUpdateStatus, setAutoUpdateStatus] = useState('unknown');
     const [checking, setChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(null);
+    const [switching, setSwitching] = useState(false);
+    const [recentRefs, setRecentRefs] = useState([]);
+    const [previewing, setPreviewing] = useState(false);
+    const [preview, setPreview] = useState(null);
+    const [previewError, setPreviewError] = useState(null);
+    const [confirmAction, setConfirmAction] = useState(null); // { action: 'rollback' } | { action: 'switch', ref } | null
 
     const loadStatus = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const [s, autoUpdate] = await Promise.all([
+            const [s, autoUpdate, settings] = await Promise.all([
                 getStatus(),
                 getAutoUpdateStatus(),
+                getSettings(),
             ]);
             setStatus(s.status);
             setAutoUpdateStatus(autoUpdate);
+            setRecentRefs(settings.recent_refs);
         } catch (ex) {
             setError(ex.message);
         } finally {
@@ -104,6 +117,7 @@ export const App = () => {
     }
 
     async function handleRollback() {
+        setConfirmAction(null);
         setError(null);
         try {
             await stageRollback();
@@ -122,6 +136,34 @@ export const App = () => {
         } catch (ex) {
             setError(ex.message);
             setPhase(PHASE.ROLLBACK_STAGED);
+        }
+    }
+
+    async function handleSwitchImage(ref) {
+        setConfirmAction(null);
+        setSwitching(true);
+        setError(null);
+        try {
+            await switchImage(ref);
+            await addRecentRef(ref);
+            await loadStatus();
+        } catch (ex) {
+            setError(ex.message);
+        } finally {
+            setSwitching(false);
+        }
+    }
+
+    async function handlePreview(ref) {
+        setPreviewing(true);
+        setPreview(null);
+        setPreviewError(null);
+        try {
+            setPreview(await inspectImage(ref));
+        } catch (ex) {
+            setPreviewError(ex.message);
+        } finally {
+            setPreviewing(false);
         }
     }
 
@@ -191,7 +233,7 @@ export const App = () => {
                         rollback={status.rollback}
                         phase={phase}
                         onConfirmUpdate={() => setRebootModal('update')}
-                        onRollback={handleRollback}
+                        onRollback={() => setConfirmAction({ action: 'rollback' })}
                         onConfirmReboot={() => setRebootModal('rollback')}
                     />
                 )}
@@ -199,6 +241,17 @@ export const App = () => {
                 {progress.length > 0 && (
                     <ProgressLog lines={progress} />
                 )}
+
+                <SwitchImage
+                    recentRefs={recentRefs}
+                    switching={switching}
+                    disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED}
+                    onSwitch={ref => setConfirmAction({ action: 'switch', ref })}
+                    previewing={previewing}
+                    preview={preview}
+                    previewError={previewError}
+                    onPreview={handlePreview}
+                />
             </PageSection>
 
             <Modal
@@ -223,6 +276,33 @@ export const App = () => {
                         {phase === PHASE.REBOOTING ? "Rebooting…" : "Reboot"}
                     </Button>
                     <Button variant="link" onClick={() => setRebootModal(null)}>
+                        Cancel
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            <Modal
+                isOpen={confirmAction !== null}
+                onClose={() => setConfirmAction(null)}
+                variant="small"
+            >
+                <ModalHeader
+                    title={confirmAction?.action === 'switch' ? "Switch image?" : "Stage rollback?"}
+                />
+                <ModalBody>
+                    {confirmAction?.action === 'switch'
+                        ? <>The system will be reconfigured to track <code>{confirmAction.ref}</code> and the image will be staged for next boot. Nothing is applied until you reboot.</>
+                        : "The previous image will be staged for next boot. Nothing is applied until you reboot."
+                    }
+                </ModalBody>
+                <ModalFooter>
+                    <Button
+                        variant="danger"
+                        onClick={() => confirmAction?.action === 'switch' ? handleSwitchImage(confirmAction.ref) : handleRollback()}
+                    >
+                        {confirmAction?.action === 'switch' ? "Switch" : "Stage Rollback"}
+                    </Button>
+                    <Button variant="link" onClick={() => setConfirmAction(null)}>
                         Cancel
                     </Button>
                 </ModalFooter>

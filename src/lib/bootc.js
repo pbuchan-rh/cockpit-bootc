@@ -1,5 +1,8 @@
 import cockpit from 'cockpit';
 
+const SETTINGS_PATH = '/var/lib/cockpit-bootc/settings.json';
+const MAX_RECENT_REFS = 10;
+
 /**
  * Get current bootc status.
  * Returns the parsed status object or throws on error.
@@ -103,4 +106,62 @@ export function setAutoUpdate(enabled) {
         ["systemctl", enabled ? "enable" : "disable", "--now", "bootc-fetch-apply-updates.timer"],
         { superuser: "require", err: "message" }
     );
+}
+
+/**
+ * Inspect an image reference in the registry without pulling it, for preview
+ * before switching. Works on any reference, including ones never deployed —
+ * unlike bootc status, which only knows about already-fetched deployments.
+ */
+export async function inspectImage(ref) {
+    const output = await cockpit.spawn(
+        ["skopeo", "inspect", "--tls-verify=false", `docker://${ref}`],
+        { err: "message" }
+    );
+    const info = JSON.parse(output);
+    const labels = info.Labels || {};
+    return {
+        digest: info.Digest,
+        created: labels["org.opencontainers.image.created"] || info.Created || null,
+        version: labels["org.opencontainers.image.version"] || null,
+        architecture: info.Architecture,
+    };
+}
+
+/**
+ * Switch to a different image reference. Stages the new deployment without
+ * rebooting — use applyUpdate()'s reboot path (or a manual reboot) afterward.
+ */
+export function switchImage(ref) {
+    return cockpit.spawn(
+        ["bootc", "switch", "--transport", "registry", ref],
+        { superuser: "require", err: "message" }
+    );
+}
+
+/**
+ * Read module settings (recent image refs). Returns defaults if the file
+ * doesn't exist yet or is unreadable.
+ */
+export async function getSettings() {
+    try {
+        const content = await cockpit.file(SETTINGS_PATH).read();
+        if (!content) return { recent_refs: [] };
+        const s = JSON.parse(content);
+        return { recent_refs: Array.isArray(s.recent_refs) ? s.recent_refs : [] };
+    } catch {
+        return { recent_refs: [] };
+    }
+}
+
+/**
+ * Record a successfully-switched-to image ref in settings, most-recent-first,
+ * deduplicated, capped at MAX_RECENT_REFS.
+ */
+export async function addRecentRef(ref) {
+    const settings = await getSettings();
+    const recent_refs = [ref, ...settings.recent_refs.filter(r => r !== ref)].slice(0, MAX_RECENT_REFS);
+    await cockpit.file(SETTINGS_PATH, { superuser: "require" })
+            .replace(JSON.stringify({ recent_refs }, null, 2));
+    await cockpit.spawn(["chmod", "644", SETTINGS_PATH], { superuser: "require" });
 }

@@ -26,3 +26,12 @@
     max-height: 16rem;
     overflow-y: auto;
 }
+
+.ct-switch-preview {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-switch-preview-error {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--status--danger--default);
+}

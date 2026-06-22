@@ -12,7 +12,7 @@ export const BootHistory = ({ entries }) => {
         <Card>
             <CardTitle>Boot History</CardTitle>
             <CardBody>
-                <table className="pf-v6-c-table pf-m-compact" role="grid" aria-label="Boot history">
+                <table className="ct-boot-history-table" role="grid" aria-label="Boot history">
                     <thead>
                         <tr role="row">
                             <th role="columnheader" scope="col">Observed</th>

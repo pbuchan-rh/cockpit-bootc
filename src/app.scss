@@ -35,3 +35,21 @@
     margin-block-start: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--status--danger--default);
 }
+
+// @patternfly/react-table isn't installed (lean dependency footprint) and
+// patternfly-base.css doesn't carry per-component styles, so .pf-v6-c-table
+// has no real CSS behind it — these rules are the actual styling.
+.ct-boot-history-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+        padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+        text-align: start;
+        border-bottom: 1px solid var(--pf-t--global--border--color--default);
+    }
+
+    th {
+        font-weight: var(--pf-t--global--font--weight--body--bold);
+    }
+}

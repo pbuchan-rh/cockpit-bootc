@@ -155,6 +155,23 @@ export async function getAutoUpdateStatus() {
 }
 
 /**
+ * Get the auto-update timer's next scheduled run, in epoch milliseconds.
+ * Returns null if the timer is inactive or has no next run scheduled.
+ */
+export async function getNextAutoUpdateRun() {
+    try {
+        const output = await cockpit.spawn(
+            ["systemctl", "list-timers", "bootc-fetch-apply-updates.timer", "--output=json", "--no-pager"],
+            { err: "ignore" }
+        );
+        const [entry] = JSON.parse(output);
+        return entry?.next ? entry.next / 1000 : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Enable or disable the auto-update timer.
  */
 export function setAutoUpdate(enabled) {

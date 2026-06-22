@@ -19,6 +19,7 @@ import {
     cancelStagedUpdate,
     reboot,
     getAutoUpdateStatus,
+    getNextAutoUpdateRun,
     switchImage,
     inspectImage,
 } from './lib/bootc.js';
@@ -46,6 +47,7 @@ export const App = () => {
     const [progress, setProgress] = useState([]);
     const [rebootModal, setRebootModal] = useState(null); // 'update' | 'rollback' | null
     const [autoUpdateStatus, setAutoUpdateStatus] = useState('unknown');
+    const [nextAutoUpdateRun, setNextAutoUpdateRun] = useState(null); // epoch ms, or null if inactive/unscheduled
     const [checking, setChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(null);
     const [switching, setSwitching] = useState(false);
@@ -80,6 +82,7 @@ export const App = () => {
         // Doesn't require root — load it independently so a permission
         // failure on getStatus() below doesn't block it too.
         getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
+        getNextAutoUpdateRun().then(setNextAutoUpdateRun).catch(() => {});
 
         try {
             const s = await getStatus();
@@ -222,6 +225,7 @@ export const App = () => {
         try {
             await setAutoUpdate(enabled);
             setAutoUpdateStatus(enabled ? 'active' : 'inactive');
+            setNextAutoUpdateRun(enabled ? await getNextAutoUpdateRun() : null);
         } catch (ex) {
             setError(ex.message);
         }
@@ -303,6 +307,7 @@ export const App = () => {
                             <FlexItem>
                                 <AutoUpdate
                                     status={autoUpdateStatus}
+                                    nextRun={nextAutoUpdateRun}
                                     onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
                                     disabled={!adminAllowed}
                                 />

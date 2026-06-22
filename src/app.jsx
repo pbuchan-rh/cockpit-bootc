@@ -421,7 +421,7 @@ export const App = () => {
                         : confirmAction?.action === 'autoupdate-enable'
                             ? "This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot."
                             : status?.staged
-                                ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}) — that's how <code>bootc rollback</code> works, not a bug.</>
+                                ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}).</>
                                 : "The previous image will be staged for next boot. Nothing is applied until you reboot."
                     }
                 </ModalBody>

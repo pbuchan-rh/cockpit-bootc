@@ -52,6 +52,10 @@
     background: var(--pf-t--global--background--color--secondary--default);
 }
 
+.pf-v6-c-card__footer {
+    text-align: center;
+}
+
 .ct-tracked-ref {
     margin-block-end: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--subtle);

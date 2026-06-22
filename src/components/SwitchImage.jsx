@@ -25,7 +25,7 @@ export const SwitchImage = ({
 
     return (
         <>
-                <Flex alignItems={{ default: 'alignItemsFlexEnd' }}>
+                <Flex alignItems={{ default: 'alignItemsFlexEnd' }} className="ct-switch-row">
                     <FlexItem grow={{ default: 'grow' }}>
                         <TextInput
                             type="text"

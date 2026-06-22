@@ -264,7 +264,7 @@ export const App = () => {
                     </Alert>
                 )}
 
-                <Card>
+                <Card isPlain>
                     <CardBody>
                         {trackedRef && (
                             <p className="ct-tracked-ref">

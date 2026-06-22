@@ -1,14 +1,15 @@
 @use "page.scss";
 
-// PF6's default PageSection has no background unless variant="secondary" is set,
-// and Card ships with border: 0 (relies on bg contrast, not a literal border).
-// Without this, cards have zero visual separation from the page or each other.
 .pf-v6-c-page__main-section {
-    background-color: var(--pf-t--global--background--color--secondary--default);
     gap: var(--pf-t--global--spacer--lg);
 }
 
-.pf-v6-c-card {
+// Native Cockpit modules use isPlain cards with zero border — they sit on the
+// same shared panel surface as everything else, relying on whitespace alone
+// for structure (confirmed by direct DOM comparison against Virtual Machines/
+// Accounts/Overview). Only apply the rounded-corner treatment to non-plain
+// cards; isPlain ones should stay borderless to match.
+.pf-v6-c-card:not(.pf-m-plain) {
     border: 1px solid var(--pf-t--global--border--color--default);
     border-radius: 16px;
 }

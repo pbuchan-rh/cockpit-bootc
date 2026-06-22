@@ -178,8 +178,9 @@ export const App = () => {
         setConfirmAction(null);
         setSwitching(true);
         setError(null);
+        setProgress([]);
         try {
-            await switchImage(ref);
+            await switchImage(ref, line => setProgress(p => [...p, line]));
             await addRecentRef(ref);
             await loadStatus();
             setUpdateAvailable(null);

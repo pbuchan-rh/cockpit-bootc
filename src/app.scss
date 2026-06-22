@@ -52,6 +52,15 @@
     background: var(--pf-t--global--background--color--secondary--default);
 }
 
+// PF6's Gallery defaults to auto-fill, which reserves empty grid tracks
+// once the container is wider than (item count × min-width) — the real
+// cards never grow past their minimum, leaving dead space on wide
+// displays. auto-fit collapses those empty tracks so the existing cards
+// actually stretch to fill the row.
+.pf-v6-l-gallery {
+    --pf-v6-l-gallery--GridTemplateColumns: repeat(auto-fit, minmax(var(--pf-v6-l-gallery--GridTemplateColumns--minmax--min), var(--pf-v6-l-gallery--GridTemplateColumns--minmax--max)));
+}
+
 .pf-v6-c-card__footer {
     text-align: center;
     padding-block-start: 2px;

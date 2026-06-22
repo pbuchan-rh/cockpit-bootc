@@ -200,12 +200,16 @@ export async function inspectImage(ref) {
 /**
  * Switch to a different image reference. Stages the new deployment without
  * rebooting — use applyUpdate()'s reboot path (or a manual reboot) afterward.
+ * Streams progress (layer pull, deploy) the same way stageUpdate() does —
+ * a registry pull can take a while with nothing else on screen otherwise.
  */
-export function switchImage(ref) {
+export function switchImage(ref, onProgress) {
     return cockpit.spawn(
         ["bootc", "switch", "--transport", "registry", ref],
-        { superuser: "require", err: "message" }
-    );
+        { superuser: "require", err: "out" }
+    ).stream(line => {
+        if (onProgress) onProgress(line);
+    });
 }
 
 /**

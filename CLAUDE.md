@@ -54,3 +54,10 @@ its own data files yet. If/when it needs to write state, follow the shared rule:
 See `DESIGN.md` for full scope/rationale. `bootc switch` is currently marked
 out-of-scope (v1) and is under review — do not assume it stays excluded without
 checking DESIGN.md for the latest decision.
+
+## Platform targets — no Debian
+
+cockpit-bootc only targets RHEL and its image-mode derivatives (CentOS Stream,
+Fedora) — `bootc`/image-mode is the entire premise of this module. Don't add
+`packaging/debian/` or treat its absence (flagged in a scaffolding audit
+2026-06-22) as a gap to fill — it's intentionally out of scope, not missing.

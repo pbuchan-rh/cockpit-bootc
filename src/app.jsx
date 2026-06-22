@@ -1,5 +1,5 @@
 import cockpit from 'cockpit';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
@@ -57,6 +57,8 @@ export const App = () => {
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
+    const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
+    const autoCheckedRef = useRef(false); // ensures the on-load auto-check only fires once per session
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -96,18 +98,32 @@ export const App = () => {
         loadStatus(true);
     }, [loadStatus]);
 
-    async function handleCheckForUpdates() {
+    const runCheckForUpdates = useCallback(async () => {
         setChecking(true);
         setError(null);
         try {
             const available = await checkForUpdates(trackedRef, status?.booted?.image?.imageDigest);
             setUpdateAvailable(available);
+            setLastChecked(new Date());
         } catch (ex) {
             setError(ex.message);
         } finally {
             setChecking(false);
         }
+    }, [trackedRef, status]);
+
+    async function handleCheckForUpdates() {
+        await runCheckForUpdates();
     }
+
+    // Run the check once automatically as soon as we have what it needs, so the
+    // up-to-date/update-available badge is visible on load without an extra click.
+    useEffect(() => {
+        if (autoCheckedRef.current) return;
+        if (!trackedRef || !status?.booted?.image?.imageDigest) return;
+        autoCheckedRef.current = true;
+        runCheckForUpdates();
+    }, [trackedRef, status, runCheckForUpdates]);
 
     async function handleDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
@@ -283,6 +299,7 @@ export const App = () => {
                                 <UpdateActions
                                     updateAvailable={updateAvailable}
                                     checking={checking}
+                                    lastChecked={lastChecked}
                                     downloading={phase === PHASE.DOWNLOADING}
                                     disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged}
                                     onCheckForUpdates={handleCheckForUpdates}

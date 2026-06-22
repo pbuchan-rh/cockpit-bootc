@@ -82,6 +82,11 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
+.ct-last-checked {
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
 .ct-tracking-divider {
     margin-block-start: var(--pf-t--global--spacer--md);
     margin-block-end: calc(var(--pf-t--global--spacer--md) - 2px);

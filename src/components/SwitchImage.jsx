@@ -16,6 +16,14 @@ function isSafeUrl(url) {
     }
 }
 
+// Deliberately permissive — just enough to catch obvious typos (empty,
+// whitespace, no registry/repo separator at all) before wasting a skopeo
+// call. Real validation happens when Preview actually queries the registry.
+function looksLikeImageRef(value) {
+    const trimmed = value.trim();
+    return trimmed.length > 0 && !/\s/.test(trimmed) && trimmed.includes('/');
+}
+
 export const SwitchImage = ({
     switching,
     disabled,
@@ -48,7 +56,7 @@ export const SwitchImage = ({
                             value={ref}
                             onChange={(_event, value) => updateRef(value)}
                             onKeyDown={event => {
-                                if (event.key === 'Enter' && !disabled && !previewing && ref.trim()) {
+                                if (event.key === 'Enter' && !disabled && !previewing && looksLikeImageRef(ref)) {
                                     event.preventDefault();
                                     onPreview(ref);
                                 }
@@ -61,7 +69,7 @@ export const SwitchImage = ({
                         <Button
                             variant="secondary"
                             onClick={() => (preview || previewError) ? onDismissPreview() : onPreview(ref)}
-                            isDisabled={disabled || previewing || !ref.trim()}
+                            isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
                             isLoading={previewing}
                         >
                             {previewing ? "Inspecting…" : (preview || previewError) ? "Hide Preview" : "Preview"}

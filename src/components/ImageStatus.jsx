@@ -100,6 +100,15 @@ export const ImageStatus = ({
     const isRebooting = phase === 'rebooting';
     const isBusy = isDownloading || isRebooting;
 
+    // While an update is staged but not yet applied, there's no third
+    // deployment on disk to be the real rollback target — bootc status
+    // reports "rollback" as the next entry in the deploy list, which right
+    // now is the same entry as the staged update. Not a bug in the data we're
+    // handed, but showing it as if it were a real rollback target would be
+    // misleading. Once the staged update is applied and rebooted into, the
+    // deploy list reshuffles and rollback correctly points elsewhere.
+    const rollbackAmbiguous = !isRollbackStaged && !!stagedData && !!rollbackData && stagedData.digest === rollbackData.digest;
+
     if (!bootedData) {
         return (
             <EmptyState>
@@ -173,17 +182,23 @@ export const ImageStatus = ({
                     <Label color="red">Rollback</Label>
                 </CardTitle>
                 <CardBody>
-                    {rollbackData
-                        ? <ImageInfo data={rollbackData} />
-                        : (
+                    {rollbackAmbiguous
+                        ? (
                             <EmptyState variant="xs">
-                                <EmptyStateBody>No rollback available</EmptyStateBody>
+                                <EmptyStateBody>Not yet determined — available after rebooting into the staged update</EmptyStateBody>
                             </EmptyState>
                         )
+                        : rollbackData
+                            ? <ImageInfo data={rollbackData} />
+                            : (
+                                <EmptyState variant="xs">
+                                    <EmptyStateBody>No rollback available</EmptyStateBody>
+                                </EmptyState>
+                            )
                     }
                 </CardBody>
                 <CardFooter>
-                    {rollbackData && !isRollbackStaged && (
+                    {rollbackData && !isRollbackStaged && !rollbackAmbiguous && (
                         <Button
                             variant="secondary"
                             onClick={onRollback}

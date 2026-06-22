@@ -80,9 +80,18 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
+.ct-progress-log-block {
+    margin-block-start: var(--pf-t--global--spacer--md);
+}
+
 .ct-progress-log {
     max-height: 16rem;
     overflow-y: auto;
+}
+
+.ct-progress-done-hint {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
 }
 
 .ct-switch-preview {

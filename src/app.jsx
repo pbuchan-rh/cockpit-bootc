@@ -66,6 +66,7 @@ export const App = () => {
     const [bootHistory, setBootHistory] = useState([]);
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
+    const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -126,6 +127,7 @@ export const App = () => {
     async function handleDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
         setProgress([]);
+        setProgressKind('download');
         setError(null);
         try {
             await stageUpdate(line => setProgress(p => [...p, line]));
@@ -179,6 +181,7 @@ export const App = () => {
         setSwitching(true);
         setError(null);
         setProgress([]);
+        setProgressKind('switch');
         try {
             await switchImage(ref, line => setProgress(p => [...p, line]));
             await addRecentRef(ref);
@@ -315,6 +318,15 @@ export const App = () => {
                             onPreview={handlePreview}
                             onDismissPreview={() => { setPreview(null); setPreviewError(null); }}
                         />
+
+                        {progress.length > 0 && (
+                            <ProgressLog
+                                lines={progress}
+                                running={phase === PHASE.DOWNLOADING || switching}
+                                kind={progressKind}
+                                onDismiss={() => { setProgress([]); setProgressKind(null); }}
+                            />
+                        )}
                     </CardBody>
                 </Card>
 
@@ -329,10 +341,6 @@ export const App = () => {
                         onRollback={() => setConfirmAction({ action: 'rollback' })}
                         onConfirmReboot={() => setRebootModal('rollback')}
                     />
-                )}
-
-                {progress.length > 0 && (
-                    <ProgressLog lines={progress} />
                 )}
 
                 {bootHistory.length > 0 && (

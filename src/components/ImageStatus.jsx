@@ -111,7 +111,7 @@ export const ImageStatus = ({
     }
 
     return (
-        <Gallery hasGutter minWidths={{ default: '300px' }}>
+        <Gallery hasGutter minWidths={{ default: '280px' }} className="ct-status-gallery">
 
             {/* Booted image */}
             <Card isFullHeight isPlain>

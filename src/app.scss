@@ -62,6 +62,16 @@
     --pf-v6-l-gallery--GridTemplateColumns: repeat(auto-fit, minmax(var(--pf-v6-l-gallery--GridTemplateColumns--minmax--min), var(--pf-v6-l-gallery--GridTemplateColumns--minmax--max)));
 }
 
+// Booted/Staged/Rollback are parallel comparison columns, not unrelated
+// dashboard widgets (unlike e.g. Overview's cards) — without some separator
+// they read as one undifferentiated block of text. A vertical rule between
+// columns (not a card border) gives that structure while keeping the cards
+// themselves plain/borderless, matching the native convention.
+.ct-status-gallery > .pf-v6-c-card:not(:first-child) {
+    border-inline-start: 1px solid var(--pf-t--global--border--color--default);
+    padding-inline-start: var(--pf-t--global--spacer--lg);
+}
+
 .pf-v6-c-card__footer {
     text-align: center;
     padding-block-start: 2px;

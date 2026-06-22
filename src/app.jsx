@@ -123,6 +123,7 @@ export const App = () => {
             await stageRollback();
             await loadStatus();
             setPhase(PHASE.ROLLBACK_STAGED);
+            setUpdateAvailable(null);
         } catch (ex) {
             setError(ex.message);
         }
@@ -147,6 +148,7 @@ export const App = () => {
             await switchImage(ref);
             await addRecentRef(ref);
             await loadStatus();
+            setUpdateAvailable(null);
         } catch (ex) {
             setError(ex.message);
         } finally {

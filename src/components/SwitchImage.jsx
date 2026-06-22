@@ -45,6 +45,12 @@ export const SwitchImage = ({
                             type="text"
                             value={ref}
                             onChange={(_event, value) => setRef(value)}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter' && !disabled && !previewing && ref.trim()) {
+                                    event.preventDefault();
+                                    onPreview(ref);
+                                }
+                            }}
                             placeholder="registry.example.com/namespace/image:tag"
                             aria-label="Image reference"
                         />

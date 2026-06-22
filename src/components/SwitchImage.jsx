@@ -4,12 +4,6 @@ import { DescriptionList, DescriptionListDescription, DescriptionListGroup, Desc
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 
-function formatDigest(digest) {
-    if (!digest) return null;
-    const hash = digest.startsWith("sha256:") ? digest.slice(7) : digest;
-    return "sha256:" + hash.slice(0, 12) + "…";
-}
-
 export const SwitchImage = ({
     switching,
     disabled,
@@ -78,10 +72,16 @@ export const SwitchImage = ({
                             <DescriptionListTerm>Version</DescriptionListTerm>
                             <DescriptionListDescription>{preview.version || "Unknown"}</DescriptionListDescription>
                         </DescriptionListGroup>
+                        {preview.rhelVersion && (
+                            <DescriptionListGroup>
+                                <DescriptionListTerm>RHEL version</DescriptionListTerm>
+                                <DescriptionListDescription>{preview.rhelVersion}</DescriptionListDescription>
+                            </DescriptionListGroup>
+                        )}
                         <DescriptionListGroup>
                             <DescriptionListTerm>Digest</DescriptionListTerm>
                             <DescriptionListDescription>
-                                <code title={preview.digest}>{formatDigest(preview.digest)}</code>
+                                <code>{preview.digest}</code>
                             </DescriptionListDescription>
                         </DescriptionListGroup>
                         <DescriptionListGroup>
@@ -94,9 +94,15 @@ export const SwitchImage = ({
                             <DescriptionListTerm>Architecture</DescriptionListTerm>
                             <DescriptionListDescription>{preview.architecture || "Unknown"}</DescriptionListDescription>
                         </DescriptionListGroup>
+                        {preview.alsoTagged?.length > 0 && (
+                            <DescriptionListGroup>
+                                <DescriptionListTerm>Also tagged</DescriptionListTerm>
+                                <DescriptionListDescription>{preview.alsoTagged.join(", ")}</DescriptionListDescription>
+                            </DescriptionListGroup>
+                        )}
                         {preview.source && (
                             <DescriptionListGroup>
-                                <DescriptionListTerm>Source</DescriptionListTerm>
+                                <DescriptionListTerm>Base image source</DescriptionListTerm>
                                 <DescriptionListDescription>
                                     <a href={preview.source} target="_blank" rel="noopener noreferrer">{preview.source}</a>
                                     {preview.revision && <> @ <code>{preview.revision.slice(0, 12)}</code></>}

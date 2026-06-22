@@ -193,6 +193,27 @@ export async function inspectImage(ref) {
     );
     const info = JSON.parse(output);
     const labels = info.Labels || {};
+
+    // RepoTags is every tag in the repo, not the tags that resolve to this
+    // digest — confirmed empirically (e.g. a real registry where most tags
+    // pointed at entirely different builds, including one with known bugs).
+    // Resolve each tag's own digest in parallel and keep only real matches.
+    const lastSlash = ref.lastIndexOf('/');
+    const lastColon = ref.lastIndexOf(':');
+    const repo = lastColon > lastSlash ? ref.slice(0, lastColon) : ref;
+    const requestedTag = lastColon > lastSlash ? ref.slice(lastColon + 1) : null;
+    const otherTags = (info.RepoTags || []).filter(tag => tag !== requestedTag);
+    const matches = await Promise.allSettled(otherTags.map(async tag => {
+        const tagOutput = await cockpit.spawn(
+            ["skopeo", "inspect", "--tls-verify=false", `docker://${repo}:${tag}`],
+            { err: "ignore" }
+        );
+        return { tag, digest: JSON.parse(tagOutput).Digest };
+    }));
+    const alsoTagged = matches
+            .filter(r => r.status === 'fulfilled' && r.value.digest === info.Digest)
+            .map(r => r.value.tag);
+
     return {
         digest: info.Digest,
         created: labels["org.opencontainers.image.created"] || info.Created || null,
@@ -200,6 +221,8 @@ export async function inspectImage(ref) {
         architecture: info.Architecture,
         revision: labels["org.opencontainers.image.revision"] || null,
         source: labels["org.opencontainers.image.source"] || null,
+        rhelVersion: labels["redhat.version-id"] || null,
+        alsoTagged,
     };
 }
 

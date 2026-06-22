@@ -301,7 +301,7 @@ export const App = () => {
                                     checking={checking}
                                     lastChecked={lastChecked}
                                     downloading={phase === PHASE.DOWNLOADING}
-                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged}
+                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged || switching}
                                     onCheckForUpdates={handleCheckForUpdates}
                                     onDownloadUpdate={handleDownloadUpdate}
                                 />
@@ -343,7 +343,7 @@ export const App = () => {
                         rollback={status.rollback}
                         phase={phase}
                         rollbackQueued={!!status.rollbackQueued}
-                        disabled={!adminAllowed}
+                        disabled={!adminAllowed || switching}
                         onConfirmUpdate={() => setRebootModal('update')}
                         onRollback={() => setConfirmAction({ action: 'rollback' })}
                         onCancelStagedUpdate={() => setConfirmAction({ action: 'cancel-staged' })}

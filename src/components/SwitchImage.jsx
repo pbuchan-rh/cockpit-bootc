@@ -14,8 +14,14 @@ export const SwitchImage = ({
     previewError,
     onPreview,
     onDismissPreview,
+    onRefChange,
 }) => {
     const [ref, setRef] = useState('');
+
+    function updateRef(value) {
+        setRef(value);
+        if (onRefChange) onRefChange(value);
+    }
 
     return (
         <>
@@ -28,7 +34,7 @@ export const SwitchImage = ({
                             id="switch-image-ref"
                             type="text"
                             value={ref}
-                            onChange={(_event, value) => setRef(value)}
+                            onChange={(_event, value) => updateRef(value)}
                             onKeyDown={event => {
                                 if (event.key === 'Enter' && !disabled && !previewing && ref.trim()) {
                                     event.preventDefault();

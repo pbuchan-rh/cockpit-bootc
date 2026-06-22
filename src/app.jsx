@@ -61,6 +61,7 @@ export const App = () => {
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
     const autoCheckedRef = useRef(false); // ensures the on-load auto-check only fires once per session
+    const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -212,9 +213,13 @@ export const App = () => {
         setPreview(null);
         setPreviewError(null);
         try {
-            setPreview(await inspectImage(ref));
+            const result = await inspectImage(ref);
+            // Discard a stale response if the input was edited while the
+            // request was in flight — otherwise a slow lookup for an old ref
+            // could land after the field already shows something else.
+            if (switchRefRef.current === ref) setPreview(result);
         } catch (ex) {
-            setPreviewError(ex.message);
+            if (switchRefRef.current === ref) setPreviewError(ex.message);
         } finally {
             setPreviewing(false);
         }
@@ -337,6 +342,16 @@ export const App = () => {
                             previewError={previewError}
                             onPreview={handlePreview}
                             onDismissPreview={() => { setPreview(null); setPreviewError(null); }}
+                            onRefChange={value => {
+                                // Any edit invalidates whatever's currently displayed — a preview
+                                // for the old text shouldn't keep looking like it describes the new
+                                // text just because no new request has resolved yet.
+                                if (value !== switchRefRef.current) {
+                                    setPreview(null);
+                                    setPreviewError(null);
+                                }
+                                switchRefRef.current = value;
+                            }}
                         />
 
                         {progress.length > 0 && (

@@ -9,6 +9,8 @@
 #   /var/lib/cockpit-bootc/settings.json      Recent image refs for bootc switch
 #   /var/lib/cockpit-bootc/status-cache.json  Last-known bootc status (Limited Access fallback)
 #   /var/lib/cockpit-bootc/history.json       Boot-target change history
+#   /var/lib/cockpit-bootc/activity.json      Completed Download/Switch transactions
+#   /var/lib/cockpit-bootc/logs/              Full output per transaction, downloadable
 #
 # Applied at install time by the RPM's %post scriptlet:
 #   semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-bootc(/.*)?'

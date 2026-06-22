@@ -3,8 +3,11 @@ import cockpit from 'cockpit';
 const SETTINGS_PATH = '/var/lib/cockpit-bootc/settings.json';
 const STATUS_CACHE_PATH = '/var/lib/cockpit-bootc/status-cache.json';
 const HISTORY_PATH = '/var/lib/cockpit-bootc/history.json';
+const ACTIVITY_PATH = '/var/lib/cockpit-bootc/activity.json';
+const LOGS_DIR = '/var/lib/cockpit-bootc/logs';
 const MAX_RECENT_REFS = 10;
 const MAX_HISTORY_ENTRIES = 20;
+const MAX_ACTIVITY_ENTRIES = 20;
 
 /**
  * Get current bootc status.
@@ -80,6 +83,56 @@ export async function recordBootIfChanged(bootedSlot) {
     await cockpit.file(HISTORY_PATH, { superuser: "require" })
             .replace(JSON.stringify({ entries: newEntries }, null, 2));
     await cockpit.spawn(["chmod", "644", HISTORY_PATH], { superuser: "require" });
+}
+
+/**
+ * Read the activity log (completed Download/Switch transactions,
+ * most-recent-first). Returns [] if none yet.
+ */
+export async function getActivityLog() {
+    try {
+        const content = await cockpit.file(ACTIVITY_PATH).read();
+        if (!content) return [];
+        const a = JSON.parse(content);
+        return Array.isArray(a.entries) ? a.entries : [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Record a completed (or failed) Download/Switch transaction, with its full
+ * streamed output saved as a downloadable log file. Capped at
+ * MAX_ACTIVITY_ENTRIES, oldest dropped first (and its log file removed).
+ */
+export async function recordActivity({ kind, ref, version, success, logLines }) {
+    const startedAt = new Date().toISOString();
+    const logFile = `${startedAt.replace(/[:.]/g, '-')}-${kind}.log`;
+    const logPath = `${LOGS_DIR}/${logFile}`;
+
+    await cockpit.spawn(["mkdir", "-p", LOGS_DIR], { superuser: "require" });
+    await cockpit.file(logPath, { superuser: "require" }).replace(logLines.join('\n'));
+    await cockpit.spawn(["chmod", "644", logPath], { superuser: "require" });
+
+    const entries = await getActivityLog();
+    const entry = { started_at: startedAt, kind, ref, version: version ?? null, success, log_file: logFile };
+    const newEntries = [entry, ...entries].slice(0, MAX_ACTIVITY_ENTRIES);
+
+    const dropped = entries.slice(MAX_ACTIVITY_ENTRIES - 1);
+    for (const old of dropped) {
+        cockpit.spawn(["rm", "-f", `${LOGS_DIR}/${old.log_file}`], { superuser: "require" }).catch(() => {});
+    }
+
+    await cockpit.file(ACTIVITY_PATH, { superuser: "require" })
+            .replace(JSON.stringify({ entries: newEntries }, null, 2));
+    await cockpit.spawn(["chmod", "644", ACTIVITY_PATH], { superuser: "require" });
+}
+
+/**
+ * Read a saved activity log's full text, for download.
+ */
+export async function getActivityLogText(logFile) {
+    return cockpit.file(`${LOGS_DIR}/${logFile}`).read();
 }
 
 /**

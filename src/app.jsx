@@ -26,6 +26,9 @@ import {
     getCachedStatus,
     getBootHistory,
     recordBootIfChanged,
+    getActivityLog,
+    recordActivity,
+    getActivityLogText,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -33,7 +36,7 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
-import { BootHistory } from './components/BootHistory.jsx';
+import { HistoryCard } from './components/HistoryCard.jsx';
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -67,6 +70,7 @@ export const App = () => {
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
+    const [activityLog, setActivityLog] = useState([]);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -87,6 +91,7 @@ export const App = () => {
         getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
         getSettings().then(s => setRecentRefs(s.recent_refs)).catch(() => {});
         getBootHistory().then(setBootHistory).catch(() => {});
+        getActivityLog().then(setActivityLog).catch(() => {});
 
         try {
             const s = await getStatus();
@@ -94,6 +99,7 @@ export const App = () => {
             setTrackedRef(s.spec?.image?.image ?? null);
             cacheStatus(s.status).catch(() => {});
             recordBootIfChanged(s.status.booted).then(() => getBootHistory().then(setBootHistory)).catch(() => {});
+            return s.status;
         } catch (ex) {
             const cached = await getCachedStatus();
             if (cached) {
@@ -102,6 +108,7 @@ export const App = () => {
             } else {
                 setError(ex.message);
             }
+            return null;
         } finally {
             setLoading(false);
         }
@@ -129,14 +136,21 @@ export const App = () => {
         setProgress([]);
         setProgressKind('download');
         setError(null);
+        const lines = [];
         try {
-            await stageUpdate(line => setProgress(p => [...p, line]));
-            await loadStatus();
+            await stageUpdate(line => { lines.push(line); setProgress(p => [...p, line]); });
+            const newStatus = await loadStatus();
             setPhase(PHASE.DOWNLOADED);
             setUpdateAvailable(null);
+            recordActivity({
+                kind: 'download', ref: trackedRef, version: newStatus?.staged?.image?.version,
+                success: true, logLines: lines,
+            }).then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } catch (ex) {
             setError(ex.message);
             setPhase(PHASE.IDLE);
+            recordActivity({ kind: 'download', ref: trackedRef, version: null, success: false, logLines: lines })
+                .then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         }
     }
 
@@ -182,13 +196,20 @@ export const App = () => {
         setError(null);
         setProgress([]);
         setProgressKind('switch');
+        const lines = [];
         try {
-            await switchImage(ref, line => setProgress(p => [...p, line]));
+            await switchImage(ref, line => { lines.push(line); setProgress(p => [...p, line]); });
             await addRecentRef(ref);
-            await loadStatus();
+            const newStatus = await loadStatus();
             setUpdateAvailable(null);
+            recordActivity({
+                kind: 'switch', ref, version: newStatus?.staged?.image?.version,
+                success: true, logLines: lines,
+            }).then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } catch (ex) {
             setError(ex.message);
+            recordActivity({ kind: 'switch', ref, version: null, success: false, logLines: lines })
+                .then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } finally {
             setSwitching(false);
         }
@@ -343,8 +364,8 @@ export const App = () => {
                     />
                 )}
 
-                {bootHistory.length > 0 && (
-                    <BootHistory entries={bootHistory} />
+                {(bootHistory.length > 0 || activityLog.length > 0) && (
+                    <HistoryCard bootHistory={bootHistory} activityLog={activityLog} onDownloadLog={getActivityLogText} />
                 )}
             </PageSection>
 

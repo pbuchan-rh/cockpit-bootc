@@ -73,16 +73,31 @@ scaffold with no inherited data-model assumptions to undo.
 
 ## Scope
 
-See `cockpit-bootc-project.md` for the full command reference and component breakdown.
-Summary:
+See `cockpit-bootc-project.md` for the original command reference (now partly
+historical — see its own note) and `README.md` for the current feature list.
 
-**In scope (v1):** status display (booted/staged/rollback images), check for updates,
-stage + apply update with soft-reboot, rollback, auto-update timer toggle.
+**Built (as of 2026-06-22):** status display (booted/staged/rollback images,
+always-labeled tracked reference), check for updates (via `skopeo inspect` digest
+comparison, not bootc's own unreliable `--check`), stage + apply update with
+soft-reboot, bidirectional rollback, clean cancel for staged updates/queued
+rollbacks, auto-update timer toggle (gated behind confirmation), `bootc switch`
+with a `skopeo`-based preview before committing, Image History + Activity log with
+downloadable transaction logs, `usr-overlay` drift detection (warning only, not
+the ability to create one), admin-gating, and a cached-status fallback for Limited
+Access mode.
 
-**Out of scope (v1):** `bootc switch` (image/registry switching), tag-pinned upgrades,
-`bootc usr-overlay`, `bootc edit`, bootloader entry management, sealed-image
-verification status (no `bootc status` field exposes this yet — tracked upstream at
-bootc-dev/bootc#1190).
+The original "out of scope (v1)" list undersold what the module ended up covering —
+`switch` and `usr-overlay` (detection) both moved from "out of scope" to "built"
+once it became clear the module needed to cover the full bootc lifecycle, not just
+a v1 slice. What's actually still out of scope:
+
+- **Pinning** (`bootc edit` to protect a deployment from GC) — real bootc
+  capability, scoped, but needs a spec read-modify-write cycle; not yet built.
+- `bootc edit` (raw spec editing) and `bootc loader-entries` (bootloader
+  internals) — still correctly excluded as too low-level for a general UI.
+- Sealed-image/composefs verification status — blocked upstream, no `bootc status`
+  field exposes this yet (tracked at bootc-dev/bootc#1190). Not a choice we made;
+  there's nothing to surface until bootc adds it.
 
 ## Status
 

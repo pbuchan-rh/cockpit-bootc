@@ -3,6 +3,15 @@
 > A Cockpit plugin for managing bootc image updates and rollbacks.
 > Standalone community project. Works on any Fedora/RHEL bootc-based system.
 
+> **Note (2026-06-22):** this was the original planning doc, written before any
+> code existed. Most of it (the command reference, PatternFly conventions, the
+> "Scope" table below) is still accurate background, but the **"app.jsx — Skeleton
+> Starting Point" section is now historical** — it describes an early sketch, not
+> the actual implementation. For current behavior, read `src/app.jsx` directly,
+> `README.md` for the feature list, and `GOTCHAS.md` for lessons learned that
+> contradict or refine some of the assumptions made here (especially around
+> `bootc upgrade --check` reliability and `bootc rollback`'s side effects).
+
 ---
 
 ## What This Is
@@ -323,26 +332,35 @@ export function setAutoUpdate(enabled) {
 
 ## Scope: Planned vs. Future Commands
 
-### In scope (v1)
+> **Update (2026-06-22):** the split below is from the original plan, before any
+> code existed. Both `bootc switch` and `bootc usr-overlay` (detection, not the
+> ability to create one) ended up built — see `README.md` for what's actually
+> implemented now. Also: `bootc upgrade --check` turned out to be unreliable
+> against floating tags (see `GOTCHAS.md`) and is **not** used for "Check for
+> Updates" — that's a `skopeo inspect` digest comparison instead.
+
+### Built
 
 | Command | UI action |
 |---|---|
 | `bootc status --json` | Load all image state on mount |
-| `bootc upgrade --check` | "Check for updates" button |
+| `skopeo inspect` (digest comparison, not `bootc upgrade --check`) | "Check for Updates" button |
 | `bootc upgrade --download-only` | Stage / download update |
 | `bootc upgrade --from-downloaded --apply --soft-reboot=auto` | "Apply & Reboot" |
-| `bootc rollback` | "Rollback" button |
-| `systemctl ... bootc-fetch-apply-updates.timer` | Auto-update toggle |
-| `systemd DBus Reboot()` | Full reboot after rollback |
+| `bootc rollback` (once) | "Roll Back" button |
+| `bootc rollback` (twice, to undo the side effect) | "Cancel" on a staged update/queued rollback |
+| `bootc switch --transport registry <ref>` | "Switch" + registry/tag input with preview |
+| `skopeo inspect` | Switch-target preview (version/digest/created/source) |
+| `systemctl ... bootc-fetch-apply-updates.timer` | Auto-update toggle (gated behind confirmation) |
+| `systemd DBus Reboot()` | Full reboot after rollback/overlay-clear |
+| `status.usrOverlay` field (read-only) | Drift warning banner + "Reboot to Clear" |
 
-### Out of scope for v1 — community candidates
+### Still out of scope
 
 | Command | Why deferred |
 |---|---|
-| `bootc switch <image>` | Changes tracked image entirely — different registry, org, or variant. First-class community workflow (switching image variants, moving between registries, pinning to a specific image). Not needed for a single-image personal setup. Add as a dedicated UI panel when contributed. |
-| `bootc upgrade --tag=TAG` | Upgrade to a specific tag rather than `latest`. Useful for version pinning. Natural companion to `bootc switch` UI — defer together. |
-| `bootc usr-overlay` | Writable overlay on `/usr` for temporary changes. Advanced/debug use. Skip. |
-| `bootc edit` | Edit bootc spec directly. Too low-level for a general UI. Skip. |
+| `bootc edit` (for pinning) | Real capability, scoped, but needs a spec read-modify-write cycle — not yet built. |
+| `bootc edit` (general spec editing) | Too low-level for a general UI. Skip. |
 | `bootc loader-entries` | Internal bootloader management. Skip. |
 
 ---
@@ -500,6 +518,12 @@ Without this, Cockpit's nav chrome appears inside your plugin's iframe.
 ---
 
 ## app.jsx — Skeleton Starting Point
+
+> **Historical.** This was the original sketch, written before any code existed.
+> The real `src/app.jsx` diverged substantially (admin-gating, switch, history,
+> cancel flows, activity logs, none of which are reflected below). Read the actual
+> file for current behavior — this section is kept for context on the original
+> intent, not as documentation of what's there now.
 
 ```jsx
 import React, { useState, useEffect } from "react";

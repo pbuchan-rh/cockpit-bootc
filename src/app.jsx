@@ -4,6 +4,7 @@ import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js
 import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
@@ -64,6 +65,7 @@ export const App = () => {
     const [statusCachedAt, setStatusCachedAt] = useState(null); // set when status came from cache, not a live query
     const [bootHistory, setBootHistory] = useState([]);
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
+    const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -88,6 +90,7 @@ export const App = () => {
         try {
             const s = await getStatus();
             setStatus(s.status);
+            setTrackedRef(s.spec?.image?.image ?? null);
             cacheStatus(s.status).catch(() => {});
             recordBootIfChanged(s.status.booted).then(() => getBootHistory().then(setBootHistory)).catch(() => {});
         } catch (ex) {
@@ -271,6 +274,11 @@ export const App = () => {
 
                 <Card>
                     <CardBody>
+                        {trackedRef && (
+                            <p className="ct-tracked-ref">
+                                Currently tracking <code>{trackedRef}</code>
+                            </p>
+                        )}
                         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
                             <FlexItem>
                                 <AutoUpdate
@@ -290,6 +298,21 @@ export const App = () => {
                                 />
                             </FlexItem>
                         </Flex>
+
+                        <Divider className="ct-tracking-divider" />
+
+                        <p className="ct-switch-label">Track a different image:</p>
+                        <SwitchImage
+                            recentRefs={recentRefs}
+                            switching={switching}
+                            disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED}
+                            switchDisabled={!adminAllowed}
+                            onSwitch={ref => setConfirmAction({ action: 'switch', ref })}
+                            previewing={previewing}
+                            preview={preview}
+                            previewError={previewError}
+                            onPreview={handlePreview}
+                        />
                     </CardBody>
                 </Card>
 
@@ -313,18 +336,6 @@ export const App = () => {
                 {bootHistory.length > 0 && (
                     <BootHistory entries={bootHistory} />
                 )}
-
-                <SwitchImage
-                    recentRefs={recentRefs}
-                    switching={switching}
-                    disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED}
-                    switchDisabled={!adminAllowed}
-                    onSwitch={ref => setConfirmAction({ action: 'switch', ref })}
-                    previewing={previewing}
-                    preview={preview}
-                    previewError={previewError}
-                    onPreview={handlePreview}
-                />
             </PageSection>
 
             <Modal

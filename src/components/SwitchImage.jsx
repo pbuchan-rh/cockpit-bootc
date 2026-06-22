@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
@@ -26,9 +25,7 @@ export const SwitchImage = ({
     const [ref, setRef] = useState('');
 
     return (
-        <Card>
-            <CardTitle>Switch Image</CardTitle>
-            <CardBody>
+        <>
                 <Flex alignItems={{ default: 'alignItemsFlexEnd' }}>
                     {recentRefs.length > 0 && (
                         <FlexItem>
@@ -110,7 +107,6 @@ export const SwitchImage = ({
                         )}
                     </DescriptionList>
                 )}
-            </CardBody>
-        </Card>
+        </>
     );
 };

@@ -52,6 +52,20 @@
     background: var(--pf-t--global--background--color--secondary--default);
 }
 
+.ct-tracked-ref {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-tracking-divider {
+    margin-block: var(--pf-t--global--spacer--md);
+}
+
+.ct-switch-label {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
 .ct-progress-log {
     max-height: 16rem;
     overflow-y: auto;

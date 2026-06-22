@@ -21,6 +21,7 @@ export const SwitchImage = ({
     preview,
     previewError,
     onPreview,
+    onDismissPreview,
 }) => {
     const [ref, setRef] = useState('');
 
@@ -71,10 +72,26 @@ export const SwitchImage = ({
                 </Flex>
 
                 {previewError && (
-                    <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
+                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>
+                            <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
+                        </FlexItem>
+                        <FlexItem>
+                            <Button variant="plain" onClick={onDismissPreview} aria-label="Dismiss">×</Button>
+                        </FlexItem>
+                    </Flex>
                 )}
 
                 {preview && !previewError && (
+                    <div className="ct-switch-preview-block">
+                        <Flex justifyContent={{ default: 'justifyContentFlexStart' }} alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                            <FlexItem>
+                                <p className="ct-switch-label">Preview</p>
+                            </FlexItem>
+                            <FlexItem>
+                                <Button variant="plain" onClick={onDismissPreview} aria-label="Dismiss preview">×</Button>
+                            </FlexItem>
+                        </Flex>
                     <DescriptionList isCompact isHorizontal className="ct-switch-preview">
                         <DescriptionListGroup>
                             <DescriptionListTerm>Version</DescriptionListTerm>
@@ -106,6 +123,7 @@ export const SwitchImage = ({
                             </DescriptionListGroup>
                         )}
                     </DescriptionList>
+                    </div>
                 )}
         </>
     );

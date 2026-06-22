@@ -312,6 +312,7 @@ export const App = () => {
                             preview={preview}
                             previewError={previewError}
                             onPreview={handlePreview}
+                            onDismissPreview={() => { setPreview(null); setPreviewError(null); }}
                         />
                     </CardBody>
                 </Card>

@@ -310,7 +310,6 @@ export const App = () => {
 
                         <Divider className="ct-tracking-divider" />
 
-                        <p className="ct-switch-label">Track a different image:</p>
                         <SwitchImage
                             switching={switching}
                             disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued}

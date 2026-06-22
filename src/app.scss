@@ -78,8 +78,8 @@
 }
 
 .ct-switch-label {
-    margin-block-end: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--subtle);
+    white-space: nowrap;
 }
 
 .ct-switch-row {

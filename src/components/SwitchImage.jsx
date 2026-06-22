@@ -25,9 +25,13 @@ export const SwitchImage = ({
 
     return (
         <>
-                <Flex alignItems={{ default: 'alignItemsFlexEnd' }} className="ct-switch-row">
+                <Flex alignItems={{ default: 'alignItemsCenter' }} className="ct-switch-row">
+                    <FlexItem>
+                        <label htmlFor="switch-image-ref" className="ct-switch-label">Track a different image:</label>
+                    </FlexItem>
                     <FlexItem grow={{ default: 'grow' }}>
                         <TextInput
+                            id="switch-image-ref"
                             type="text"
                             value={ref}
                             onChange={(_event, value) => setRef(value)}

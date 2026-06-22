@@ -90,10 +90,16 @@ Access mode, an Image History log, an Activity log with downloadable transaction
 logs). All of it was removed (2026-06-22) once it became clear it was scope
 creep: none of it served the core mission, and no comparable native Cockpit
 module (podman, machines, storaged) persists its own state — they're thin
-wrappers over stateful backends, which is what this module should be too. The
-module now has no data of its own anywhere on disk. See `GOTCHAS.md` and
-project memory for the reasoning; the pre-removal state is preserved at git tag
-`v0-with-persistence` if ever needed again.
+wrappers over stateful backends, which is what this module should be too. This
+isn't just inferred by example — it's a stated Cockpit design ideal
+([cockpit-project.org/ideals.html](https://cockpit-project.org/ideals.html),
+"Direct System Interaction"): *"Cockpit does not store its own opinion of the
+state of the server anywhere. The UI always reflects the actual current state
+of the server."* Everything removed was exactly that — our own opinion of state,
+stored separately from the server. The module now has no data of its own
+anywhere on disk. See `GOTCHAS.md` and project memory for the reasoning; the
+pre-removal state is preserved at git tag `v0-with-persistence` if ever needed
+again.
 
 The original "out of scope (v1)" list undersold what the module ended up covering —
 `switch` and `usr-overlay` (detection) both moved from "out of scope" to "built"

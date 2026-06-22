@@ -65,7 +65,12 @@ images"). None of it was needed for that. No comparable native Cockpit module
 backends that already track everything (podman, libvirt, udisks). bootc is
 unusually stateless (just current + one rollback, no history) — which made every
 piece of "let's remember X" *feel* like it was filling a real gap, when it was
-actually scope the module never needed. All of it was removed (2026-06-22); the
+actually scope the module never needed. It's also a named Cockpit design ideal,
+not just an inferred convention — see "Direct System Interaction" at
+[cockpit-project.org/ideals.html](https://cockpit-project.org/ideals.html):
+*"Cockpit does not store its own opinion of the state of the server anywhere.
+The UI always reflects the actual current state of the server."* All of it was
+removed (2026-06-22); the
 pre-removal state is preserved at git tag `v0-with-persistence`. **Before adding
 any new persistence, ask: does a native module doing something comparable
 actually store its own state, or does it just query a backend that already

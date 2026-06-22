@@ -246,6 +246,16 @@ export const App = () => {
                     </Alert>
                 )}
 
+                {status?.usrOverlay && (
+                    <Alert variant="warning" title="/usr has a transient overlay mounted" isInline>
+                        This system no longer matches its source image exactly — a writable overlay
+                        ({status.usrOverlay.accessMode}, {status.usrOverlay.persistence}) is active on{' '}
+                        <code>/usr</code>, likely from <code>bootc usr-overlay</code>. It will be
+                        discarded on next reboot, but until then the running system has drifted from
+                        what's documented here.
+                    </Alert>
+                )}
+
                 <Card>
                     <CardBody>
                         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>

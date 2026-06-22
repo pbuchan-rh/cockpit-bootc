@@ -349,7 +349,7 @@ export const App = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="primary"
+                        variant="secondary"
                         onClick={rebootModal === 'update' ? handleApplyUpdate : handleReboot}
                         isDisabled={!adminAllowed}
                     >
@@ -377,7 +377,7 @@ export const App = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="primary"
+                        variant="secondary"
                         onClick={() => confirmAction?.action === 'switch' ? handleSwitchImage(confirmAction.ref) : handleRollback()}
                         isDisabled={!adminAllowed}
                     >

@@ -53,7 +53,7 @@ export const SwitchImage = ({
                     </FlexItem>
                     <FlexItem>
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             onClick={() => onPreview(ref)}
                             isDisabled={disabled || previewing || !ref.trim()}
                             isLoading={previewing}
@@ -63,7 +63,7 @@ export const SwitchImage = ({
                     </FlexItem>
                     <FlexItem>
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             onClick={() => onSwitch(ref)}
                             isDisabled={disabled || switchDisabled || switching || !ref.trim()}
                             isLoading={switching}

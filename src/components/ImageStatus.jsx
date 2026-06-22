@@ -140,7 +140,7 @@ export const ImageStatus = ({
                 <CardFooter>
                     {(stagedData || isDownloaded) && (
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             onClick={onConfirmUpdate}
                             isDisabled={disabled || isBusy}
                         >
@@ -168,7 +168,7 @@ export const ImageStatus = ({
                 <CardFooter>
                     {rollbackData && !isRollbackStaged && (
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             onClick={onRollback}
                             isDisabled={disabled || isBusy || isDownloaded}
                         >
@@ -177,7 +177,7 @@ export const ImageStatus = ({
                     )}
                     {isRollbackStaged && (
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             onClick={onConfirmReboot}
                             isDisabled={disabled || isRebooting}
                         >

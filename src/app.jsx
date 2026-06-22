@@ -275,7 +275,7 @@ export const App = () => {
                             <FlexItem>
                                 <AutoUpdate
                                     status={autoUpdateStatus}
-                                    onToggle={handleAutoUpdateToggle}
+                                    onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
                                     disabled={!adminAllowed}
                                 />
                             </FlexItem>
@@ -367,21 +367,33 @@ export const App = () => {
                 variant="small"
             >
                 <ModalHeader
-                    title={confirmAction?.action === 'switch' ? "Switch image?" : "Stage rollback?"}
+                    title={
+                        confirmAction?.action === 'switch' ? "Switch image?"
+                            : confirmAction?.action === 'autoupdate-enable' ? "Enable automatic updates?"
+                                : "Stage rollback?"
+                    }
                 />
                 <ModalBody>
                     {confirmAction?.action === 'switch'
                         ? <>The system will be reconfigured to track <code>{confirmAction.ref}</code> and the image will be staged for next boot. Nothing is applied until you reboot.</>
-                        : "The previous image will be staged for next boot. Nothing is applied until you reboot."
+                        : confirmAction?.action === 'autoupdate-enable'
+                            ? "This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot."
+                            : "The previous image will be staged for next boot. Nothing is applied until you reboot."
                     }
                 </ModalBody>
                 <ModalFooter>
                     <Button
                         variant="secondary"
-                        onClick={() => confirmAction?.action === 'switch' ? handleSwitchImage(confirmAction.ref) : handleRollback()}
+                        onClick={() => {
+                            if (confirmAction?.action === 'switch') handleSwitchImage(confirmAction.ref);
+                            else if (confirmAction?.action === 'autoupdate-enable') { setConfirmAction(null); handleAutoUpdateToggle(true); }
+                            else handleRollback();
+                        }}
                         isDisabled={!adminAllowed}
                     >
-                        {confirmAction?.action === 'switch' ? "Switch" : "Stage Rollback"}
+                        {confirmAction?.action === 'switch' ? "Switch"
+                            : confirmAction?.action === 'autoupdate-enable' ? "Enable"
+                                : "Stage Rollback"}
                     </Button>
                     <Button variant="link" onClick={() => setConfirmAction(null)}>
                         Cancel

@@ -1,3 +1,4 @@
+import cockpit from 'cockpit';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
@@ -53,6 +54,16 @@ export const App = () => {
     const [preview, setPreview] = useState(null);
     const [previewError, setPreviewError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null); // { action: 'rollback' } | { action: 'switch', ref } | null
+    const [adminAllowed, setAdminAllowed] = useState(true); // optimistic default; real enforcement is superuser:"require" on each call
+
+    useEffect(() => {
+        if (typeof cockpit.permission !== 'function') return;
+        const permission = cockpit.permission({ admin: true });
+        const update = () => setAdminAllowed(permission.allowed !== false);
+        update();
+        permission.addEventListener('changed', update);
+        return () => permission.removeEventListener('changed', update);
+    }, []);
 
     const loadStatus = useCallback(async () => {
         setLoading(true);
@@ -194,7 +205,7 @@ export const App = () => {
     return (
         <Page className="no-masthead-sidebar">
             <PageSection>
-                {error && (
+                {error && !(!status && !adminAllowed) && (
                     <Alert
                         variant="danger"
                         title="Error"
@@ -205,6 +216,12 @@ export const App = () => {
                     </Alert>
                 )}
 
+                {!status && !adminAllowed && (
+                    <Alert variant="info" title="Administrative access required" isInline>
+                        bootc requires root to query image status. Unlock "Administrative access" above to view and manage updates.
+                    </Alert>
+                )}
+
                 <Card>
                     <CardBody>
                         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
@@ -212,6 +229,7 @@ export const App = () => {
                                 <AutoUpdate
                                     status={autoUpdateStatus}
                                     onToggle={handleAutoUpdateToggle}
+                                    disabled={!adminAllowed}
                                 />
                             </FlexItem>
                             <FlexItem>
@@ -219,7 +237,7 @@ export const App = () => {
                                     updateAvailable={updateAvailable}
                                     checking={checking}
                                     downloading={phase === PHASE.DOWNLOADING}
-                                    disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED || phase === PHASE.DOWNLOADED || !!status?.staged}
+                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED || phase === PHASE.DOWNLOADED || !!status?.staged}
                                     onCheckForUpdates={handleCheckForUpdates}
                                     onDownloadUpdate={handleDownloadUpdate}
                                 />
@@ -234,6 +252,7 @@ export const App = () => {
                         staged={status.staged}
                         rollback={status.rollback}
                         phase={phase}
+                        disabled={!adminAllowed}
                         onConfirmUpdate={() => setRebootModal('update')}
                         onRollback={() => setConfirmAction({ action: 'rollback' })}
                         onConfirmReboot={() => setRebootModal('rollback')}
@@ -248,6 +267,7 @@ export const App = () => {
                     recentRefs={recentRefs}
                     switching={switching}
                     disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED}
+                    switchDisabled={!adminAllowed}
                     onSwitch={ref => setConfirmAction({ action: 'switch', ref })}
                     previewing={previewing}
                     preview={preview}
@@ -274,6 +294,7 @@ export const App = () => {
                     <Button
                         variant="danger"
                         onClick={rebootModal === 'update' ? handleApplyUpdate : handleReboot}
+                        isDisabled={!adminAllowed}
                     >
                         {phase === PHASE.REBOOTING ? "Rebooting…" : "Reboot"}
                     </Button>
@@ -301,6 +322,7 @@ export const App = () => {
                     <Button
                         variant="danger"
                         onClick={() => confirmAction?.action === 'switch' ? handleSwitchImage(confirmAction.ref) : handleRollback()}
+                        isDisabled={!adminAllowed}
                     >
                         {confirmAction?.action === 'switch' ? "Switch" : "Stage Rollback"}
                     </Button>

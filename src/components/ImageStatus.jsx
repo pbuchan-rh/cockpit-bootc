@@ -81,6 +81,7 @@ export const ImageStatus = ({
     staged,
     rollback,
     phase,
+    disabled,
     onConfirmUpdate,
     onRollback,
     onConfirmReboot,
@@ -141,7 +142,7 @@ export const ImageStatus = ({
                         <Button
                             variant="danger"
                             onClick={onConfirmUpdate}
-                            isDisabled={isBusy}
+                            isDisabled={disabled || isBusy}
                         >
                             {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
                         </Button>
@@ -169,7 +170,7 @@ export const ImageStatus = ({
                         <Button
                             variant="secondary"
                             onClick={onRollback}
-                            isDisabled={isBusy || isDownloaded}
+                            isDisabled={disabled || isBusy || isDownloaded}
                         >
                             Roll Back
                         </Button>
@@ -178,7 +179,7 @@ export const ImageStatus = ({
                         <Button
                             variant="danger"
                             onClick={onConfirmReboot}
-                            isDisabled={isRebooting}
+                            isDisabled={disabled || isRebooting}
                         >
                             {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
                         </Button>

@@ -16,6 +16,7 @@ export const SwitchImage = ({
     recentRefs,
     switching,
     disabled,
+    switchDisabled,
     onSwitch,
     previewing,
     preview,
@@ -64,7 +65,7 @@ export const SwitchImage = ({
                         <Button
                             variant="secondary"
                             onClick={() => onSwitch(ref)}
-                            isDisabled={disabled || switching || !ref.trim()}
+                            isDisabled={disabled || switchDisabled || switching || !ref.trim()}
                             isLoading={switching}
                         >
                             {switching ? "Switching…" : "Switch"}

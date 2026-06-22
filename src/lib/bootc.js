@@ -1,6 +1,33 @@
 import cockpit from 'cockpit';
 
 /**
+ * /run/ostree-booted already exists on every bootc-booted system (it's the
+ * marker file bootc's own bootc-fetch-apply-updates.service checks via
+ * ConditionPathExists) — used as a flock target so concurrent bootc-mutating
+ * calls from multiple cockpit-bootc tabs/sessions serialize instead of
+ * racing, with zero new files written. Does NOT protect against
+ * bootc-fetch-apply-updates.service itself, which doesn't take this lock —
+ * that's a separate systemd unit we don't own and won't patch.
+ */
+const LOCK_FILE = "/run/ostree-booted";
+
+function withLock(argv) {
+    return ["flock", "--nonblock", "--verbose", LOCK_FILE, ...argv];
+}
+
+// Distinguish "another bootc-mutating call is already running" from a real
+// command failure so the UI can show something actionable instead of raw
+// flock/bootc stderr. streamedText covers stageUpdate/switchImage, which use
+// err: "out" (stderr merged into the streamed output, not ex.message).
+function asFriendlyError(ex, streamedText = "") {
+    const text = (ex && ex.message) || streamedText;
+    if (ex && ex.exit_status === 1 && /failed to get lock/.test(text)) {
+        return new Error("Another bootc operation is already in progress. Try again in a moment.");
+    }
+    return ex;
+}
+
+/**
  * Get current bootc status.
  * Returns the parsed status object or throws on error.
  */
@@ -34,13 +61,19 @@ export async function checkForUpdates(trackedRef, bootedDigest) {
  * Streams all output (stdout + stderr) to onProgress.
  * Call applyUpdate() to reboot into the staged image.
  */
-export function stageUpdate(onProgress) {
-    return cockpit.spawn(
-        ["bootc", "upgrade", "--download-only"],
-        { superuser: "require", err: "out" }
-    ).stream(line => {
-        if (onProgress) onProgress(line);
-    });
+export async function stageUpdate(onProgress) {
+    let streamedText = "";
+    try {
+        return await cockpit.spawn(
+            withLock(["bootc", "upgrade", "--download-only"]),
+            { superuser: "require", err: "out" }
+        ).stream(line => {
+            streamedText += line;
+            if (onProgress) onProgress(line);
+        });
+    } catch (ex) {
+        throw asFriendlyError(ex, streamedText);
+    }
 }
 
 /**
@@ -49,22 +82,30 @@ export function stageUpdate(onProgress) {
  * (userspace-only, faster) or full reboot is needed. Falls back automatically.
  * This is the sole reboot path for updates — do not call reboot() after stageUpdate().
  */
-export function applyUpdate() {
-    return cockpit.spawn(
-        ["bootc", "upgrade", "--from-downloaded", "--apply", "--soft-reboot=auto"],
-        { superuser: "require", err: "message" }
-    );
+export async function applyUpdate() {
+    try {
+        return await cockpit.spawn(
+            withLock(["bootc", "upgrade", "--from-downloaded", "--apply", "--soft-reboot=auto"]),
+            { superuser: "require", err: "message" }
+        );
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
 }
 
 /**
  * Stage a rollback to the previous image.
  * Fast — no download required. Requires a reboot to take effect.
  */
-export function stageRollback() {
-    return cockpit.spawn(
-        ["bootc", "rollback"],
-        { superuser: "require", err: "message" }
-    );
+export async function stageRollback() {
+    try {
+        return await cockpit.spawn(
+            withLock(["bootc", "rollback"]),
+            { superuser: "require", err: "message" }
+        );
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
 }
 
 /**
@@ -151,11 +192,17 @@ export async function inspectImage(ref) {
  * Streams progress (layer pull, deploy) the same way stageUpdate() does —
  * a registry pull can take a while with nothing else on screen otherwise.
  */
-export function switchImage(ref, onProgress) {
-    return cockpit.spawn(
-        ["bootc", "switch", "--transport", "registry", ref],
-        { superuser: "require", err: "out" }
-    ).stream(line => {
-        if (onProgress) onProgress(line);
-    });
+export async function switchImage(ref, onProgress) {
+    let streamedText = "";
+    try {
+        return await cockpit.spawn(
+            withLock(["bootc", "switch", "--transport", "registry", ref]),
+            { superuser: "require", err: "out" }
+        ).stream(line => {
+            streamedText += line;
+            if (onProgress) onProgress(line);
+        });
+    } catch (ex) {
+        throw asFriendlyError(ex, streamedText);
+    }
 }

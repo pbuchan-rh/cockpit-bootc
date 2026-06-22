@@ -187,6 +187,7 @@ export const App = () => {
         try {
             await cancelStagedUpdate();
             await loadStatus();
+            setPhase(PHASE.IDLE); // handleDownloadUpdate may have left phase stuck at DOWNLOADED
         } catch (ex) {
             setError(ex.message);
         }

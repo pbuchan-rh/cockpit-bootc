@@ -3,6 +3,7 @@ import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.
 import { Card, CardBody, CardFooter, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
+import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Gallery } from "@patternfly/react-core/dist/esm/layouts/Gallery/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
@@ -138,13 +139,28 @@ export const ImageStatus = ({
                     }
                 </CardBody>
                 <CardFooter>
-                    <Button
-                        variant="secondary"
-                        onClick={onConfirmUpdate}
-                        isDisabled={disabled || isBusy || !(stagedData || isDownloaded)}
-                    >
-                        {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
-                    </Button>
+                    <Flex justifyContent={{ default: 'justifyContentCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>
+                            <Button
+                                variant="secondary"
+                                onClick={onConfirmUpdate}
+                                isDisabled={disabled || isBusy || !(stagedData || isDownloaded)}
+                            >
+                                {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
+                            </Button>
+                        </FlexItem>
+                        {stagedData && (
+                            <FlexItem>
+                                <Button
+                                    variant="secondary"
+                                    onClick={onRollback}
+                                    isDisabled={disabled || isBusy}
+                                >
+                                    Cancel
+                                </Button>
+                            </FlexItem>
+                        )}
+                    </Flex>
                 </CardFooter>
             </Card>
 

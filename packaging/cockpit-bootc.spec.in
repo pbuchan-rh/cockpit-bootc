@@ -35,7 +35,6 @@ BuildRequires: nodejs-esbuild
 Requires: cockpit-bridge
 Requires: bootc
 Requires: skopeo
-Requires(post): policycoreutils-python-utils
 
 %{NPM_PROVIDES}
 
@@ -67,35 +66,11 @@ NODE_ENV=production NODE_PATH=/usr/lib/node_modules:$(echo /usr/lib/node_modules
 # drop source maps, they are large and just for debugging
 find %{buildroot}%{_datadir}/cockpit/ -name '*.map' | xargs --no-run-if-empty rm --verbose
 
-# SELinux file context definitions (shipped as a formal deliverable)
-install -d -m 755 %{buildroot}%{_datadir}/%{name}/selinux
-install -m 644 selinux/bootc.fc %{buildroot}%{_datadir}/%{name}/selinux/
-
-# Runtime data directory — created here so %%post restorecon has a path to label
-install -d -m 755 %{buildroot}/var/lib/%{name}
-
 %check
 appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/metainfo/*
 
 # this can't be meaningfully tested during package build; tests happen through
 # FMF (see plans/all.fmf) during package gating
-
-%post
-# Set SELinux file context for /var/lib/cockpit-bootc/ and apply it
-if semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-bootc(/.*)?' 2>/dev/null || \
-   semanage fcontext -m -t cockpit_var_lib_t '/var/lib/cockpit-bootc(/.*)?'; then
-    restorecon -Rv /var/lib/cockpit-bootc || true
-else
-    echo "WARNING: Failed to configure SELinux context for /var/lib/cockpit-bootc/" >&2
-    echo "WARNING: Run manually: semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-bootc(/.*)?'" >&2
-    echo "WARNING: Then run:     restorecon -Rv /var/lib/cockpit-bootc" >&2
-fi
-
-%postun
-# Remove the fcontext entry only on full uninstall, not on upgrade
-if [ $1 -eq 0 ]; then
-    semanage fcontext -d '/var/lib/cockpit-bootc(/.*)?' 2>/dev/null || true
-fi
 
 %files
 %doc README.md
@@ -103,6 +78,5 @@ fi
 %{_datadir}/cockpit/*
 %{_datadir}/metainfo/*
 %{_datadir}/%{name}/
-%dir /var/lib/%{name}
 
 %changelog

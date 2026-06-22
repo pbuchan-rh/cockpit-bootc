@@ -21,15 +21,6 @@ import {
     getAutoUpdateStatus,
     switchImage,
     inspectImage,
-    getSettings,
-    addRecentRef,
-    cacheStatus,
-    getCachedStatus,
-    getBootHistory,
-    recordBootIfChanged,
-    getActivityLog,
-    recordActivity,
-    getActivityLogText,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -37,7 +28,6 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
-import { HistoryCard } from './components/HistoryCard.jsx';
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -59,18 +49,14 @@ export const App = () => {
     const [checking, setChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(null);
     const [switching, setSwitching] = useState(false);
-    const [recentRefs, setRecentRefs] = useState([]);
     const [previewing, setPreviewing] = useState(false);
     const [preview, setPreview] = useState(null);
     const [previewError, setPreviewError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null); // { action: 'rollback' } | { action: 'switch', ref } | null
     const [adminAllowed, setAdminAllowed] = useState(true); // optimistic default; real enforcement is superuser:"require" on each call
-    const [statusCachedAt, setStatusCachedAt] = useState(null); // set when status came from cache, not a live query
-    const [bootHistory, setBootHistory] = useState([]);
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
-    const [activityLog, setActivityLog] = useState([]);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -88,30 +74,18 @@ export const App = () => {
         // gets wiped by the remount on every single action.
         if (showLoadingSkeleton) setLoading(true);
         setError(null);
-        setStatusCachedAt(null);
 
-        // These don't require root — load them independently so a permission
-        // failure on getStatus() below doesn't block them too.
+        // Doesn't require root — load it independently so a permission
+        // failure on getStatus() below doesn't block it too.
         getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
-        getSettings().then(s => setRecentRefs(s.recent_refs)).catch(() => {});
-        getBootHistory().then(setBootHistory).catch(() => {});
-        getActivityLog().then(setActivityLog).catch(() => {});
 
         try {
             const s = await getStatus();
             setStatus(s.status);
             setTrackedRef(s.spec?.image?.image ?? null);
-            cacheStatus(s.status).catch(() => {});
-            recordBootIfChanged(s.status.booted).then(() => getBootHistory().then(setBootHistory)).catch(() => {});
             return s.status;
         } catch (ex) {
-            const cached = await getCachedStatus();
-            if (cached) {
-                setStatus(cached.status);
-                setStatusCachedAt(cached.cached_at);
-            } else {
-                setError(ex.message);
-            }
+            setError(ex.message);
             return null;
         } finally {
             setLoading(false);
@@ -140,21 +114,14 @@ export const App = () => {
         setProgress([]);
         setProgressKind('download');
         setError(null);
-        const lines = [];
         try {
-            await stageUpdate(line => { lines.push(line); setProgress(p => [...p, line]); });
-            const newStatus = await loadStatus();
+            await stageUpdate(line => setProgress(p => [...p, line]));
+            await loadStatus();
             setPhase(PHASE.DOWNLOADED);
             setUpdateAvailable(null);
-            recordActivity({
-                kind: 'download', ref: trackedRef, version: newStatus?.staged?.image?.version,
-                success: true, logLines: lines,
-            }).then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } catch (ex) {
             setError(ex.message);
             setPhase(PHASE.IDLE);
-            recordActivity({ kind: 'download', ref: trackedRef, version: null, success: false, logLines: lines })
-                .then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         }
     }
 
@@ -210,20 +177,12 @@ export const App = () => {
         setError(null);
         setProgress([]);
         setProgressKind('switch');
-        const lines = [];
         try {
-            await switchImage(ref, line => { lines.push(line); setProgress(p => [...p, line]); });
-            await addRecentRef(ref);
-            const newStatus = await loadStatus();
+            await switchImage(ref, line => setProgress(p => [...p, line]));
+            await loadStatus();
             setUpdateAvailable(null);
-            recordActivity({
-                kind: 'switch', ref, version: newStatus?.staged?.image?.version,
-                success: true, logLines: lines,
-            }).then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } catch (ex) {
             setError(ex.message);
-            recordActivity({ kind: 'switch', ref, version: null, success: false, logLines: lines })
-                .then(() => getActivityLog().then(setActivityLog)).catch(() => {});
         } finally {
             setSwitching(false);
         }
@@ -284,12 +243,6 @@ export const App = () => {
                     </Alert>
                 )}
 
-                {statusCachedAt && (
-                    <Alert variant="warning" title="Showing last known status" isInline>
-                        bootc requires root to query live image status. This is cached data from{' '}
-                        {new Date(statusCachedAt).toLocaleString()} — unlock "Administrative access" above for current state.
-                    </Alert>
-                )}
 
                 {status?.usrOverlay && !overlayWarningDismissed && (
                     <Alert
@@ -342,7 +295,6 @@ export const App = () => {
 
                         <p className="ct-switch-label">Track a different image:</p>
                         <SwitchImage
-                            recentRefs={recentRefs}
                             switching={switching}
                             disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued}
                             switchDisabled={!adminAllowed}
@@ -379,10 +331,6 @@ export const App = () => {
                         onCancelRollback={handleRollback}
                         onConfirmReboot={() => setRebootModal('rollback')}
                     />
-                )}
-
-                {(bootHistory.length > 0 || activityLog.length > 0) && (
-                    <HistoryCard bootHistory={bootHistory} activityLog={activityLog} onDownloadLog={getActivityLogText} />
                 )}
             </PageSection>
 

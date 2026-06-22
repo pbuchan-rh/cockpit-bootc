@@ -81,10 +81,19 @@ always-labeled tracked reference), check for updates (via `skopeo inspect` diges
 comparison, not bootc's own unreliable `--check`), stage + apply update with
 soft-reboot, bidirectional rollback, clean cancel for staged updates/queued
 rollbacks, auto-update timer toggle (gated behind confirmation), `bootc switch`
-with a `skopeo`-based preview before committing, Image History + Activity log with
-downloadable transaction logs, `usr-overlay` drift detection (warning only, not
-the ability to create one), admin-gating, and a cached-status fallback for Limited
-Access mode.
+with a `skopeo`-based preview before committing, `usr-overlay` drift detection
+(warning only, not the ability to create one), and admin-gating.
+
+**Deliberately stateless:** an earlier iteration added persistence
+(`/var/lib/cockpit-bootc/` — recent-refs settings, a status cache for Limited
+Access mode, an Image History log, an Activity log with downloadable transaction
+logs). All of it was removed (2026-06-22) once it became clear it was scope
+creep: none of it served the core mission, and no comparable native Cockpit
+module (podman, machines, storaged) persists its own state — they're thin
+wrappers over stateful backends, which is what this module should be too. The
+module now has no data of its own anywhere on disk. See `GOTCHAS.md` and
+project memory for the reasoning; the pre-removal state is preserved at git tag
+`v0-with-persistence` if ever needed again.
 
 The original "out of scope (v1)" list undersold what the module ended up covering —
 `switch` and `usr-overlay` (detection) both moved from "out of scope" to "built"

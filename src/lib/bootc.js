@@ -1,14 +1,5 @@
 import cockpit from 'cockpit';
 
-const SETTINGS_PATH = '/var/lib/cockpit-bootc/settings.json';
-const STATUS_CACHE_PATH = '/var/lib/cockpit-bootc/status-cache.json';
-const HISTORY_PATH = '/var/lib/cockpit-bootc/history.json';
-const ACTIVITY_PATH = '/var/lib/cockpit-bootc/activity.json';
-const LOGS_DIR = '/var/lib/cockpit-bootc/logs';
-const MAX_RECENT_REFS = 10;
-const MAX_HISTORY_ENTRIES = 20;
-const MAX_ACTIVITY_ENTRIES = 20;
-
 /**
  * Get current bootc status.
  * Returns the parsed status object or throws on error.
@@ -19,120 +10,6 @@ export async function getStatus() {
         { superuser: "require", err: "message" }
     );
     return JSON.parse(output);
-}
-
-/**
- * Cache the last-known status to disk (world-readable) so a session without
- * admin access can still show something — bootc status itself requires root
- * unconditionally, so this is the only way to show data in Limited Access mode.
- */
-export async function cacheStatus(status) {
-    const content = JSON.stringify({ status, cached_at: new Date().toISOString() }, null, 2);
-    await cockpit.file(STATUS_CACHE_PATH, { superuser: "require" }).replace(content);
-    await cockpit.spawn(["chmod", "644", STATUS_CACHE_PATH], { superuser: "require" });
-}
-
-/**
- * Read the cached status, if any. Returns null if never cached or unreadable.
- * Does not require admin access — that's the whole point.
- */
-export async function getCachedStatus() {
-    try {
-        const content = await cockpit.file(STATUS_CACHE_PATH).read();
-        if (!content) return null;
-        return JSON.parse(content);
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Read the boot history log (most-recent-first). Returns [] if none yet.
- */
-export async function getBootHistory() {
-    try {
-        const content = await cockpit.file(HISTORY_PATH).read();
-        if (!content) return [];
-        const h = JSON.parse(content);
-        return Array.isArray(h.entries) ? h.entries : [];
-    } catch {
-        return [];
-    }
-}
-
-/**
- * Append a boot-history entry if this digest differs from the most recent
- * recorded one. Call this whenever a fresh booted-image status is observed —
- * it's a no-op if nothing actually changed, so it's safe to call on every load.
- * Capped at MAX_HISTORY_ENTRIES, oldest dropped first.
- */
-export async function recordBootIfChanged(bootedSlot) {
-    const digest = bootedSlot?.image?.imageDigest;
-    if (!digest) return;
-
-    const entries = await getBootHistory();
-    if (entries[0]?.digest === digest) return; // no real change since last recorded
-
-    const entry = {
-        digest,
-        version: bootedSlot.image.version ?? null,
-        reference: bootedSlot.image.image?.image ?? null,
-        observed_at: new Date().toISOString(),
-    };
-    const newEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
-    await cockpit.file(HISTORY_PATH, { superuser: "require" })
-            .replace(JSON.stringify({ entries: newEntries }, null, 2));
-    await cockpit.spawn(["chmod", "644", HISTORY_PATH], { superuser: "require" });
-}
-
-/**
- * Read the activity log (completed Download/Switch transactions,
- * most-recent-first). Returns [] if none yet.
- */
-export async function getActivityLog() {
-    try {
-        const content = await cockpit.file(ACTIVITY_PATH).read();
-        if (!content) return [];
-        const a = JSON.parse(content);
-        return Array.isArray(a.entries) ? a.entries : [];
-    } catch {
-        return [];
-    }
-}
-
-/**
- * Record a completed (or failed) Download/Switch transaction, with its full
- * streamed output saved as a downloadable log file. Capped at
- * MAX_ACTIVITY_ENTRIES, oldest dropped first (and its log file removed).
- */
-export async function recordActivity({ kind, ref, version, success, logLines }) {
-    const startedAt = new Date().toISOString();
-    const logFile = `${startedAt.replace(/[:.]/g, '-')}-${kind}.log`;
-    const logPath = `${LOGS_DIR}/${logFile}`;
-
-    await cockpit.spawn(["mkdir", "-p", LOGS_DIR], { superuser: "require" });
-    await cockpit.file(logPath, { superuser: "require" }).replace(logLines.join('\n'));
-    await cockpit.spawn(["chmod", "644", logPath], { superuser: "require" });
-
-    const entries = await getActivityLog();
-    const entry = { started_at: startedAt, kind, ref, version: version ?? null, success, log_file: logFile };
-    const newEntries = [entry, ...entries].slice(0, MAX_ACTIVITY_ENTRIES);
-
-    const dropped = entries.slice(MAX_ACTIVITY_ENTRIES - 1);
-    for (const old of dropped) {
-        cockpit.spawn(["rm", "-f", `${LOGS_DIR}/${old.log_file}`], { superuser: "require" }).catch(() => {});
-    }
-
-    await cockpit.file(ACTIVITY_PATH, { superuser: "require" })
-            .replace(JSON.stringify({ entries: newEntries }, null, 2));
-    await cockpit.spawn(["chmod", "644", ACTIVITY_PATH], { superuser: "require" });
-}
-
-/**
- * Read a saved activity log's full text, for download.
- */
-export async function getActivityLogText(logFile) {
-    return cockpit.file(`${LOGS_DIR}/${logFile}`).read();
 }
 
 /**
@@ -281,31 +158,4 @@ export function switchImage(ref, onProgress) {
     ).stream(line => {
         if (onProgress) onProgress(line);
     });
-}
-
-/**
- * Read module settings (recent image refs). Returns defaults if the file
- * doesn't exist yet or is unreadable.
- */
-export async function getSettings() {
-    try {
-        const content = await cockpit.file(SETTINGS_PATH).read();
-        if (!content) return { recent_refs: [] };
-        const s = JSON.parse(content);
-        return { recent_refs: Array.isArray(s.recent_refs) ? s.recent_refs : [] };
-    } catch {
-        return { recent_refs: [] };
-    }
-}
-
-/**
- * Record a successfully-switched-to image ref in settings, most-recent-first,
- * deduplicated, capped at MAX_RECENT_REFS.
- */
-export async function addRecentRef(ref) {
-    const settings = await getSettings();
-    const recent_refs = [ref, ...settings.recent_refs.filter(r => r !== ref)].slice(0, MAX_RECENT_REFS);
-    await cockpit.file(SETTINGS_PATH, { superuser: "require" })
-            .replace(JSON.stringify({ recent_refs }, null, 2));
-    await cockpit.spawn(["chmod", "644", SETTINGS_PATH], { superuser: "require" });
 }

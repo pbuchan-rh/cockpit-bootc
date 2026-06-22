@@ -41,8 +41,11 @@ does not.
 **`bootc status` unconditionally requires root.** No unprivileged read path exists
 (tested directly: `bootc status --booted --json` without sudo fails the same way as
 plain `bootc status`). This is a hard bootc limitation, not something we can work
-around at the Cockpit layer — it's why Limited Access mode falls back to a cached
-last-known snapshot (`status-cache.json`) instead of live data.
+around at the Cockpit layer. An earlier iteration added a cached-snapshot fallback
+on disk so Limited Access mode could still show *something* — that was removed
+(2026-06-22, see project memory) as scope creep; Limited Access mode now just
+shows "unlock admin access to view," matching how most other Cockpit modules
+behave when not elevated.
 
 **`rollbackQueued` is a real top-level field in `bootc status --json`** (sibling to
 `booted`/`staged`/`rollback`), not something you have to infer. Use it directly —
@@ -51,6 +54,22 @@ out of sync the moment something changes server-side without going through your
 exact code path (we hit this twice in one session).
 
 ## App architecture gotchas
+
+**Persisting data to disk is not the default — check against the core mission
+first.** A whole layer (`/var/lib/cockpit-bootc/`: settings, status cache, Image
+History, Activity log + downloadable logs) got built incrementally over one long
+session, each piece individually reasonable in the moment, before anyone checked
+it against the module's actual stated goal ("download, install, rollback
+images"). None of it was needed for that. No comparable native Cockpit module
+(podman, machines, storaged) persists its own state — they're thin wrappers over
+backends that already track everything (podman, libvirt, udisks). bootc is
+unusually stateless (just current + one rollback, no history) — which made every
+piece of "let's remember X" *feel* like it was filling a real gap, when it was
+actually scope the module never needed. All of it was removed (2026-06-22); the
+pre-removal state is preserved at git tag `v0-with-persistence`. **Before adding
+any new persistence, ask: does a native module doing something comparable
+actually store its own state, or does it just query a backend that already
+does?**
 
 **Any local "phase" flag used to gate UI must be reset on every path that could end
 it, or derived from real server state instead.** We built a `phase` state machine

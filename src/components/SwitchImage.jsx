@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
-import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 
 function formatDigest(digest) {
@@ -12,7 +11,6 @@ function formatDigest(digest) {
 }
 
 export const SwitchImage = ({
-    recentRefs,
     switching,
     disabled,
     switchDisabled,
@@ -28,18 +26,6 @@ export const SwitchImage = ({
     return (
         <>
                 <Flex alignItems={{ default: 'alignItemsFlexEnd' }}>
-                    {recentRefs.length > 0 && (
-                        <FlexItem>
-                            <FormSelect
-                                aria-label="Recent image references"
-                                value=""
-                                onChange={(_event, value) => { if (value) setRef(value); }}
-                            >
-                                <FormSelectOption value="" label="Recent…" />
-                                {recentRefs.map(r => <FormSelectOption key={r} value={r} label={r} />)}
-                            </FormSelect>
-                        </FlexItem>
-                    )}
                     <FlexItem grow={{ default: 'grow' }}>
                         <TextInput
                             type="text"

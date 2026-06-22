@@ -13,20 +13,20 @@ rollbacks.
   download, and apply with a soft or full reboot
 - Roll back to the previous image, in either direction
 - Switch to a different image reference entirely — registry/tag input with a
-  recent-refs dropdown and a `skopeo`-based preview (version, digest, created date,
-  source/revision link) before committing
+  `skopeo`-based preview (version, digest, created date, source/revision link)
+  before committing
 - Cancel a staged update or queued rollback cleanly — returns to neutral, no
   reboot, no side effects
 - Toggle the `bootc-fetch-apply-updates.timer` for automatic updates (with a
   confirmation, since enabling it means unattended fetch+apply+reboot on a
   recurring schedule, not just a periodic check)
-- Image History (boot transitions over time) and Activity (completed
-  Download/Switch transactions, each with a downloadable full log)
 - A drift warning if `/usr` has a transient `bootc usr-overlay` mounted
-- Works correctly under Cockpit's Limited Access mode — read-only data still
-  shows (via a cached last-known snapshot, since `bootc status` itself
-  unconditionally requires root), every mutating action is properly gated until
-  admin access is unlocked
+- Every mutating action is gated behind Cockpit's admin-access permission
+
+The module is intentionally stateless — it has no data of its own anywhere on
+disk (no `/var/lib/cockpit-bootc/`, no settings, no history). Everything shown is
+a live read of `bootc status`/`skopeo inspect`; nothing is cached or remembered
+between sessions.
 
 ## Requirements
 

@@ -138,15 +138,13 @@ export const ImageStatus = ({
                     }
                 </CardBody>
                 <CardFooter>
-                    {(stagedData || isDownloaded) && (
-                        <Button
-                            variant="secondary"
-                            onClick={onConfirmUpdate}
-                            isDisabled={disabled || isBusy}
-                        >
-                            {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
-                        </Button>
-                    )}
+                    <Button
+                        variant="secondary"
+                        onClick={onConfirmUpdate}
+                        isDisabled={disabled || isBusy || !(stagedData || isDownloaded)}
+                    >
+                        {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
+                    </Button>
                 </CardFooter>
             </Card>
 

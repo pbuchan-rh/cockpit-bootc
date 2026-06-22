@@ -98,6 +98,15 @@ export const SwitchImage = ({
                             <DescriptionListTerm>Architecture</DescriptionListTerm>
                             <DescriptionListDescription>{preview.architecture || "Unknown"}</DescriptionListDescription>
                         </DescriptionListGroup>
+                        {preview.source && (
+                            <DescriptionListGroup>
+                                <DescriptionListTerm>Source</DescriptionListTerm>
+                                <DescriptionListDescription>
+                                    <a href={preview.source} target="_blank" rel="noopener noreferrer">{preview.source}</a>
+                                    {preview.revision && <> @ <code>{preview.revision.slice(0, 12)}</code></>}
+                                </DescriptionListDescription>
+                            </DescriptionListGroup>
+                        )}
                     </DescriptionList>
                 )}
             </CardBody>

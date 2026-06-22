@@ -125,6 +125,8 @@ export async function inspectImage(ref) {
         created: labels["org.opencontainers.image.created"] || info.Created || null,
         version: labels["org.opencontainers.image.version"] || null,
         architecture: info.Architecture,
+        revision: labels["org.opencontainers.image.revision"] || null,
+        source: labels["org.opencontainers.image.source"] || null,
     };
 }
 

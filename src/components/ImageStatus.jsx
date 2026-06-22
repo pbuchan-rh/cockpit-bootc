@@ -19,6 +19,7 @@ function parseImageSlot(slot) {
         digest: img.imageDigest ?? null,
         timestamp: img.timestamp ?? null,
         incompatible: slot.incompatible ?? false,
+        softRebootCapable: slot.softRebootCapable ?? null,
     };
 }
 
@@ -34,7 +35,7 @@ function formatTimestamp(ts) {
     return new Date(ts).toLocaleString();
 }
 
-function ImageInfo({ data }) {
+function ImageInfo({ data, showRebootType }) {
     return (
         <DescriptionList isCompact isHorizontal>
             <DescriptionListGroup>
@@ -61,6 +62,14 @@ function ImageInfo({ data }) {
                 <DescriptionListGroup>
                     <DescriptionListTerm>Built</DescriptionListTerm>
                     <DescriptionListDescription>{formatTimestamp(data.timestamp)}</DescriptionListDescription>
+                </DescriptionListGroup>
+            )}
+            {showRebootType && data.softRebootCapable !== null && (
+                <DescriptionListGroup>
+                    <DescriptionListTerm>Reboot type</DescriptionListTerm>
+                    <DescriptionListDescription>
+                        {data.softRebootCapable ? "Soft reboot" : "Full reboot"}
+                    </DescriptionListDescription>
                 </DescriptionListGroup>
             )}
         </DescriptionList>
@@ -119,7 +128,7 @@ export const ImageStatus = ({
                 </CardTitle>
                 <CardBody>
                     {stagedData
-                        ? <ImageInfo data={stagedData} />
+                        ? <ImageInfo data={stagedData} showRebootType />
                         : (
                             <EmptyState variant="xs">
                                 <EmptyStateBody>No update staged</EmptyStateBody>

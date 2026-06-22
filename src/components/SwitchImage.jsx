@@ -52,11 +52,11 @@ export const SwitchImage = ({
                     <FlexItem>
                         <Button
                             variant="secondary"
-                            onClick={() => onPreview(ref)}
+                            onClick={() => (preview || previewError) ? onDismissPreview() : onPreview(ref)}
                             isDisabled={disabled || previewing || !ref.trim()}
                             isLoading={previewing}
                         >
-                            {previewing ? "Inspecting…" : "Preview"}
+                            {previewing ? "Inspecting…" : (preview || previewError) ? "Hide Preview" : "Preview"}
                         </Button>
                     </FlexItem>
                     <FlexItem>
@@ -72,26 +72,11 @@ export const SwitchImage = ({
                 </Flex>
 
                 {previewError && (
-                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
-                            <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
-                        </FlexItem>
-                        <FlexItem>
-                            <Button variant="plain" onClick={onDismissPreview} aria-label="Dismiss">×</Button>
-                        </FlexItem>
-                    </Flex>
+                    <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
                 )}
 
                 {preview && !previewError && (
                     <div className="ct-switch-preview-block">
-                        <Flex justifyContent={{ default: 'justifyContentFlexStart' }} alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                            <FlexItem>
-                                <p className="ct-switch-label">Preview</p>
-                            </FlexItem>
-                            <FlexItem>
-                                <Button variant="plain" onClick={onDismissPreview} aria-label="Dismiss preview">×</Button>
-                            </FlexItem>
-                        </Flex>
                     <DescriptionList isCompact isHorizontal className="ct-switch-preview">
                         <DescriptionListGroup>
                             <DescriptionListTerm>Version</DescriptionListTerm>

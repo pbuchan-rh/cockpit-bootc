@@ -27,8 +27,8 @@ export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
             id="bootc-auto-update-switch"
             label={
                 isChecked && nextRun
-                    ? `Automatically check for and apply updates (next check ${formatCountdown(nextRun, now)})`
-                    : "Automatically check for and apply updates"
+                    ? `Automatic updates (next check ${formatCountdown(nextRun, now)})`
+                    : "Automatic updates"
             }
             isChecked={isChecked}
             isDisabled={disabled || status === 'unknown'}

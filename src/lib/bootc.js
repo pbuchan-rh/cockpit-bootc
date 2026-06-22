@@ -1,7 +1,10 @@
 import cockpit from 'cockpit';
 
 const SETTINGS_PATH = '/var/lib/cockpit-bootc/settings.json';
+const STATUS_CACHE_PATH = '/var/lib/cockpit-bootc/status-cache.json';
+const HISTORY_PATH = '/var/lib/cockpit-bootc/history.json';
 const MAX_RECENT_REFS = 10;
+const MAX_HISTORY_ENTRIES = 20;
 
 /**
  * Get current bootc status.
@@ -13,6 +16,70 @@ export async function getStatus() {
         { superuser: "require", err: "message" }
     );
     return JSON.parse(output);
+}
+
+/**
+ * Cache the last-known status to disk (world-readable) so a session without
+ * admin access can still show something — bootc status itself requires root
+ * unconditionally, so this is the only way to show data in Limited Access mode.
+ */
+export async function cacheStatus(status) {
+    const content = JSON.stringify({ status, cached_at: new Date().toISOString() }, null, 2);
+    await cockpit.file(STATUS_CACHE_PATH, { superuser: "require" }).replace(content);
+    await cockpit.spawn(["chmod", "644", STATUS_CACHE_PATH], { superuser: "require" });
+}
+
+/**
+ * Read the cached status, if any. Returns null if never cached or unreadable.
+ * Does not require admin access — that's the whole point.
+ */
+export async function getCachedStatus() {
+    try {
+        const content = await cockpit.file(STATUS_CACHE_PATH).read();
+        if (!content) return null;
+        return JSON.parse(content);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Read the boot history log (most-recent-first). Returns [] if none yet.
+ */
+export async function getBootHistory() {
+    try {
+        const content = await cockpit.file(HISTORY_PATH).read();
+        if (!content) return [];
+        const h = JSON.parse(content);
+        return Array.isArray(h.entries) ? h.entries : [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Append a boot-history entry if this digest differs from the most recent
+ * recorded one. Call this whenever a fresh booted-image status is observed —
+ * it's a no-op if nothing actually changed, so it's safe to call on every load.
+ * Capped at MAX_HISTORY_ENTRIES, oldest dropped first.
+ */
+export async function recordBootIfChanged(bootedSlot) {
+    const digest = bootedSlot?.image?.imageDigest;
+    if (!digest) return;
+
+    const entries = await getBootHistory();
+    if (entries[0]?.digest === digest) return; // no real change since last recorded
+
+    const entry = {
+        digest,
+        version: bootedSlot.image.version ?? null,
+        reference: bootedSlot.image.image?.image ?? null,
+        observed_at: new Date().toISOString(),
+    };
+    const newEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
+    await cockpit.file(HISTORY_PATH, { superuser: "require" })
+            .replace(JSON.stringify({ entries: newEntries }, null, 2));
+    await cockpit.spawn(["chmod", "644", HISTORY_PATH], { superuser: "require" });
 }
 
 /**

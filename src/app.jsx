@@ -20,6 +20,10 @@ import {
     inspectImage,
     getSettings,
     addRecentRef,
+    cacheStatus,
+    getCachedStatus,
+    getBootHistory,
+    recordBootIfChanged,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -27,6 +31,7 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
+import { BootHistory } from './components/BootHistory.jsx';
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -55,6 +60,8 @@ export const App = () => {
     const [previewError, setPreviewError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null); // { action: 'rollback' } | { action: 'switch', ref } | null
     const [adminAllowed, setAdminAllowed] = useState(true); // optimistic default; real enforcement is superuser:"require" on each call
+    const [statusCachedAt, setStatusCachedAt] = useState(null); // set when status came from cache, not a live query
+    const [bootHistory, setBootHistory] = useState([]);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -68,17 +75,27 @@ export const App = () => {
     const loadStatus = useCallback(async () => {
         setLoading(true);
         setError(null);
+        setStatusCachedAt(null);
+
+        // These don't require root — load them independently so a permission
+        // failure on getStatus() below doesn't block them too.
+        getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
+        getSettings().then(s => setRecentRefs(s.recent_refs)).catch(() => {});
+        getBootHistory().then(setBootHistory).catch(() => {});
+
         try {
-            const [s, autoUpdate, settings] = await Promise.all([
-                getStatus(),
-                getAutoUpdateStatus(),
-                getSettings(),
-            ]);
+            const s = await getStatus();
             setStatus(s.status);
-            setAutoUpdateStatus(autoUpdate);
-            setRecentRefs(settings.recent_refs);
+            cacheStatus(s.status).catch(() => {});
+            recordBootIfChanged(s.status.booted).then(() => getBootHistory().then(setBootHistory)).catch(() => {});
         } catch (ex) {
-            setError(ex.message);
+            const cached = await getCachedStatus();
+            if (cached) {
+                setStatus(cached.status);
+                setStatusCachedAt(cached.cached_at);
+            } else {
+                setError(ex.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -222,6 +239,13 @@ export const App = () => {
                     </Alert>
                 )}
 
+                {statusCachedAt && (
+                    <Alert variant="warning" title="Showing last known status" isInline>
+                        bootc requires root to query live image status. This is cached data from{' '}
+                        {new Date(statusCachedAt).toLocaleString()} — unlock "Administrative access" above for current state.
+                    </Alert>
+                )}
+
                 <Card>
                     <CardBody>
                         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
@@ -261,6 +285,10 @@ export const App = () => {
 
                 {progress.length > 0 && (
                     <ProgressLog lines={progress} />
+                )}
+
+                {bootHistory.length > 0 && (
+                    <BootHistory entries={bootHistory} />
                 )}
 
                 <SwitchImage

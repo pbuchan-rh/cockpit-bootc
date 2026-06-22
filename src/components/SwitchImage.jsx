@@ -59,7 +59,7 @@ export const SwitchImage = ({
                         <Button
                             variant="secondary"
                             onClick={() => onSwitch(ref)}
-                            isDisabled={disabled || switchDisabled || switching || !ref.trim()}
+                            isDisabled={disabled || switchDisabled || switching || !ref.trim() || !preview}
                             isLoading={switching}
                         >
                             {switching ? "Switching…" : "Switch"}

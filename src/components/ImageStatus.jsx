@@ -168,7 +168,7 @@ export const ImageStatus = ({
                         <Button
                             variant="secondary"
                             onClick={onRollback}
-                            isDisabled={disabled || isBusy || isDownloaded}
+                            isDisabled={disabled || isBusy}
                         >
                             Roll Back
                         </Button>

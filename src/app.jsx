@@ -397,7 +397,7 @@ export const App = () => {
                     >
                         {phase === PHASE.REBOOTING ? "Rebooting…" : "Reboot"}
                     </Button>
-                    <Button variant="link" onClick={() => setRebootModal(null)}>
+                    <Button variant="secondary" onClick={() => setRebootModal(null)}>
                         Cancel
                     </Button>
                 </ModalFooter>
@@ -439,7 +439,7 @@ export const App = () => {
                             : confirmAction?.action === 'autoupdate-enable' ? "Enable"
                                 : "Stage Rollback"}
                     </Button>
-                    <Button variant="link" onClick={() => setConfirmAction(null)}>
+                    <Button variant="secondary" onClick={() => setConfirmAction(null)}>
                         Cancel
                     </Button>
                 </ModalFooter>

@@ -22,22 +22,28 @@
     --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--xs);
 }
 
-// Keep every action button as the same blue outline pill (PF6's secondary
+// Keep every action button as the same solid blue pill (PF6's primary
 // variant), including when disabled — PF6's default disabled style turns
-// grey and drops the border entirely, which reads as "broken" rather than
-// "temporarily unavailable." Tint stays blue at reduced opacity instead.
-.pf-v6-c-button.pf-m-secondary:disabled,
-.pf-v6-c-button.pf-m-secondary.pf-m-disabled,
-.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled {
-    color: var(--pf-t--global--color--brand--default);
-    background: transparent;
+// grey, which reads as "broken" rather than "temporarily unavailable."
+// Stays blue (filled, at reduced opacity) instead.
+.pf-v6-c-button.pf-m-primary:disabled,
+.pf-v6-c-button.pf-m-primary.pf-m-disabled,
+.pf-v6-c-button.pf-m-primary.pf-m-aria-disabled {
+    color: var(--pf-t--global--text--color--on-brand--default);
+    background: var(--pf-t--global--color--brand--default);
     opacity: 0.5;
 }
 
-.pf-v6-c-button.pf-m-secondary:disabled::after,
-.pf-v6-c-button.pf-m-secondary.pf-m-disabled::after,
-.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled::after {
-    border-color: var(--pf-t--global--color--brand--default);
+// The small × dismiss buttons on alerts (plain variant) default to a flat
+// square hit area with no visual weight — round them into a small blue-
+// tinted pill so they don't look like an unstyled leftover.
+.pf-v6-c-button.pf-m-plain {
+    border-radius: var(--pf-t--global--border--radius--pill);
+    color: var(--pf-t--global--color--brand--default);
+}
+
+.pf-v6-c-button.pf-m-plain:hover {
+    background: var(--pf-t--global--background--color--secondary--default);
 }
 
 .ct-progress-log {

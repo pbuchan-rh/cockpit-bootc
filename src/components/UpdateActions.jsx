@@ -15,7 +15,7 @@ export const UpdateActions = ({
             {updateAvailable === true && <Label color="blue">Update available</Label>}
             {updateAvailable === false && <Label color="green">Up to date</Label>}
             <Button
-                variant="secondary"
+                variant="primary"
                 onClick={onCheckForUpdates}
                 isDisabled={disabled || checking}
                 isLoading={checking}
@@ -23,7 +23,7 @@ export const UpdateActions = ({
                 {checking ? "Checking…" : "Check for Updates"}
             </Button>
             <Button
-                variant="secondary"
+                variant="primary"
                 onClick={onDownloadUpdate}
                 isDisabled={disabled || checking || updateAvailable !== true}
                 isLoading={downloading}

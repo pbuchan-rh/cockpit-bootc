@@ -139,15 +139,17 @@ export async function getActivityLogText(logFile) {
  * Check for an available update without downloading.
  * Returns true if an update is available, false if already up to date.
  *
- * bootc always exits 0 here regardless of outcome — it prints "No changes
- * in: <ref>" to stdout when there's nothing new, so that's the only signal.
+ * Does NOT use `bootc upgrade --check` — it trusts a cached digest
+ * comparison that can go stale against a floating tag (e.g. :latest)
+ * and report "no changes" even when the registry genuinely has new
+ * content. Confirmed independently against this registry: only a real
+ * `bootc upgrade` (no --check) found content that --check missed.
+ * Instead, compare a fresh skopeo inspect of the tracked reference
+ * directly against the currently booted digest — no caching involved.
  */
-export async function checkForUpdates() {
-    const output = await cockpit.spawn(
-        ["bootc", "upgrade", "--check"],
-        { superuser: "require", err: "message" }
-    );
-    return !output.includes("No changes in");
+export async function checkForUpdates(trackedRef, bootedDigest) {
+    const info = await inspectImage(trackedRef);
+    return info.digest !== bootedDigest;
 }
 
 /**
@@ -186,6 +188,22 @@ export function stageRollback() {
         ["bootc", "rollback"],
         { superuser: "require", err: "message" }
     );
+}
+
+/**
+ * Discard a staged update (from Download or Switch) and return to neutral —
+ * no reboot, no rollback queued, nothing else changed.
+ *
+ * bootc has no direct "discard the stage" command; the only way to discard
+ * one is `bootc rollback`, which also reorders the bootloader to queue a
+ * rollback as a side effect. Since rollback is a toggle (confirmed: calling
+ * it twice reverts the ordering), calling it twice in sequence discards the
+ * stage and immediately undoes that side effect — net effect is exactly
+ * "forget the staged update," not "forget it AND queue a rollback."
+ */
+export async function cancelStagedUpdate() {
+    await stageRollback();
+    await stageRollback();
 }
 
 /**

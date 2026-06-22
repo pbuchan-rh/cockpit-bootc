@@ -16,6 +16,7 @@ import {
     stageUpdate,
     applyUpdate,
     stageRollback,
+    cancelStagedUpdate,
     reboot,
     getAutoUpdateStatus,
     switchImage,
@@ -80,8 +81,12 @@ export const App = () => {
         return () => permission.removeEventListener('changed', update);
     }, []);
 
-    const loadStatus = useCallback(async () => {
-        setLoading(true);
+    const loadStatus = useCallback(async (showLoadingSkeleton = false) => {
+        // Only the very first load should unmount the page into the skeleton
+        // state — every later refresh (after an action) must update data in
+        // place, or every local component state (e.g. the typed switch ref)
+        // gets wiped by the remount on every single action.
+        if (showLoadingSkeleton) setLoading(true);
         setError(null);
         setStatusCachedAt(null);
 
@@ -114,14 +119,14 @@ export const App = () => {
     }, []);
 
     useEffect(() => {
-        loadStatus();
+        loadStatus(true);
     }, [loadStatus]);
 
     async function handleCheckForUpdates() {
         setChecking(true);
         setError(null);
         try {
-            const available = await checkForUpdates();
+            const available = await checkForUpdates(trackedRef, status?.booted?.image?.imageDigest);
             setUpdateAvailable(available);
         } catch (ex) {
             setError(ex.message);
@@ -171,6 +176,17 @@ export const App = () => {
             await stageRollback();
             await loadStatus(); // status.rollbackQueued now reflects this — no local flag needed
             setUpdateAvailable(null);
+        } catch (ex) {
+            setError(ex.message);
+        }
+    }
+
+    async function handleCancelStagedUpdate() {
+        setConfirmAction(null);
+        setError(null);
+        try {
+            await cancelStagedUpdate();
+            await loadStatus();
         } catch (ex) {
             setError(ex.message);
         }
@@ -358,6 +374,8 @@ export const App = () => {
                         disabled={!adminAllowed}
                         onConfirmUpdate={() => setRebootModal('update')}
                         onRollback={() => setConfirmAction({ action: 'rollback' })}
+                        onCancelStagedUpdate={() => setConfirmAction({ action: 'cancel-staged' })}
+                        onCancelRollback={handleRollback}
                         onConfirmReboot={() => setRebootModal('rollback')}
                     />
                 )}
@@ -410,7 +428,8 @@ export const App = () => {
                     title={
                         confirmAction?.action === 'switch' ? "Switch image?"
                             : confirmAction?.action === 'autoupdate-enable' ? "Enable automatic updates?"
-                                : "Stage rollback?"
+                                : confirmAction?.action === 'cancel-staged' ? "Discard staged update?"
+                                    : "Stage rollback?"
                     }
                 />
                 <ModalBody>
@@ -418,9 +437,11 @@ export const App = () => {
                         ? <>The system will be reconfigured to track <code>{confirmAction.ref}</code> and the image will be staged for next boot. Nothing is applied until you reboot.</>
                         : confirmAction?.action === 'autoupdate-enable'
                             ? "This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot."
-                            : status?.staged
-                                ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}).</>
-                                : "The previous image will be staged for next boot. Nothing is applied until you reboot."
+                            : confirmAction?.action === 'cancel-staged'
+                                ? "The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back."
+                                : status?.staged
+                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}).</>
+                                    : "The previous image will be staged for next boot. Nothing is applied until you reboot."
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -429,13 +450,15 @@ export const App = () => {
                         onClick={() => {
                             if (confirmAction?.action === 'switch') handleSwitchImage(confirmAction.ref);
                             else if (confirmAction?.action === 'autoupdate-enable') { setConfirmAction(null); handleAutoUpdateToggle(true); }
+                            else if (confirmAction?.action === 'cancel-staged') handleCancelStagedUpdate();
                             else handleRollback();
                         }}
                         isDisabled={!adminAllowed}
                     >
                         {confirmAction?.action === 'switch' ? "Switch"
                             : confirmAction?.action === 'autoupdate-enable' ? "Enable"
-                                : "Stage Rollback"}
+                                : confirmAction?.action === 'cancel-staged' ? "Discard"
+                                    : "Stage Rollback"}
                     </Button>
                     <Button variant="secondary" onClick={() => setConfirmAction(null)}>
                         Cancel

@@ -86,6 +86,8 @@ export const ImageStatus = ({
     disabled,
     onConfirmUpdate,
     onRollback,
+    onCancelStagedUpdate,
+    onCancelRollback,
     onConfirmReboot,
 }) => {
     const bootedData = parseImageSlot(booted);
@@ -154,7 +156,7 @@ export const ImageStatus = ({
                             <FlexItem>
                                 <Button
                                     variant="secondary"
-                                    onClick={onRollback}
+                                    onClick={onCancelStagedUpdate}
                                     isDisabled={disabled || isBusy}
                                 >
                                     Cancel
@@ -191,13 +193,26 @@ export const ImageStatus = ({
                         </Button>
                     )}
                     {isRollbackStaged && (
-                        <Button
-                            variant="secondary"
-                            onClick={onConfirmReboot}
-                            isDisabled={disabled || isRebooting}
-                        >
-                            {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
-                        </Button>
+                        <Flex justifyContent={{ default: 'justifyContentCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                            <FlexItem>
+                                <Button
+                                    variant="secondary"
+                                    onClick={onConfirmReboot}
+                                    isDisabled={disabled || isRebooting}
+                                >
+                                    {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
+                                </Button>
+                            </FlexItem>
+                            <FlexItem>
+                                <Button
+                                    variant="secondary"
+                                    onClick={onCancelRollback}
+                                    isDisabled={disabled || isRebooting}
+                                >
+                                    Cancel
+                                </Button>
+                            </FlexItem>
+                        </Flex>
                     )}
                 </CardFooter>
             </Card>

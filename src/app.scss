@@ -57,14 +57,8 @@
     padding-block-start: 2px;
 }
 
-.ct-tracked-ref {
-    margin-block-end: var(--pf-t--global--spacer--sm);
+.ct-tracked-ref-value {
     color: var(--pf-t--global--text--color--subtle);
-}
-
-.ct-tracked-ref-label {
-    font-size: var(--pf-t--global--font--size--sm);
-    margin-inline-end: var(--pf-t--global--spacer--sm);
 }
 
 .ct-last-checked {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
-import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 
 // "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so it stays
 // roughly fresh without needing any state outside this component.
@@ -33,8 +32,6 @@ export const UpdateActions = ({
 
     return (
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsMd' }}>
-            {updateAvailable === true && <FlexItem><Label color="blue">Update available</Label></FlexItem>}
-            {updateAvailable === false && <FlexItem><Label color="green">Up to date</Label></FlexItem>}
             {lastChecked && (
                 <FlexItem>
                     <span className="ct-last-checked">Checked {formatAgo(lastChecked, now)}</span>

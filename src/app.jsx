@@ -3,12 +3,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
+import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
 import { Skeleton } from "@patternfly/react-core/dist/esm/components/Skeleton/index.js";
+import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
 import {
     getStatus,
@@ -60,7 +62,6 @@ export const App = () => {
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
-    const autoCheckedRef = useRef(false); // ensures the on-load auto-check only fires once per session
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
 
     useEffect(() => {
@@ -119,15 +120,6 @@ export const App = () => {
     async function handleCheckForUpdates() {
         await runCheckForUpdates();
     }
-
-    // Run the check once automatically as soon as we have what it needs, so the
-    // up-to-date/update-available badge is visible on load without an extra click.
-    useEffect(() => {
-        if (autoCheckedRef.current) return;
-        if (!trackedRef || !status?.booted?.image?.imageDigest) return;
-        autoCheckedRef.current = true;
-        runCheckForUpdates();
-    }, [trackedRef, status, runCheckForUpdates]);
 
     async function handleDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
@@ -302,22 +294,9 @@ export const App = () => {
                 )}
 
                 <Card isPlain>
-                    <CardBody>
-                        {trackedRef && (
-                            <p className="ct-tracked-ref">
-                                <span className="ct-tracked-ref-label">Container image reference</span> <code>{trackedRef}</code>
-                            </p>
-                        )}
-                        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-                            <FlexItem>
-                                <AutoUpdate
-                                    status={autoUpdateStatus}
-                                    nextRun={nextAutoUpdateRun}
-                                    onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
-                                    disabled={!adminAllowed}
-                                />
-                            </FlexItem>
-                            <FlexItem>
+                    <CardHeader
+                        actions={{
+                            actions: (
                                 <UpdateActions
                                     updateAvailable={updateAvailable}
                                     checking={checking}
@@ -327,8 +306,34 @@ export const App = () => {
                                     onCheckForUpdates={handleCheckForUpdates}
                                     onDownloadUpdate={handleDownloadUpdate}
                                 />
-                            </FlexItem>
-                        </Flex>
+                            ),
+                        }}
+                    >
+                        {trackedRef && (
+                            <CardTitle>
+                                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                    <FlexItem>
+                                        <Title headingLevel="h2" size="lg">Container image reference</Title>
+                                    </FlexItem>
+                                    {updateAvailable !== null && (
+                                        <FlexItem>
+                                            <Label isCompact color={updateAvailable ? 'blue' : 'green'}>
+                                                {updateAvailable ? 'Update available' : 'Up to date'}
+                                            </Label>
+                                        </FlexItem>
+                                    )}
+                                </Flex>
+                                <code className="ct-tracked-ref-value">{trackedRef}</code>
+                            </CardTitle>
+                        )}
+                    </CardHeader>
+                    <CardBody>
+                        <AutoUpdate
+                            status={autoUpdateStatus}
+                            nextRun={nextAutoUpdateRun}
+                            onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
+                            disabled={!adminAllowed}
+                        />
 
                         <Divider className="ct-tracking-divider" />
 

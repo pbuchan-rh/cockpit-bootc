@@ -4,16 +4,6 @@
     gap: var(--pf-t--global--spacer--lg);
 }
 
-// Native Cockpit modules use isPlain cards with zero border — they sit on the
-// same shared panel surface as everything else, relying on whitespace alone
-// for structure (confirmed by direct DOM comparison against Virtual Machines/
-// Accounts/Overview). Only apply the rounded-corner treatment to non-plain
-// cards; isPlain ones should stay borderless to match.
-.pf-v6-c-card:not(.pf-m-plain) {
-    border: 1px solid var(--pf-t--global--border--color--default);
-    border-radius: 16px;
-}
-
 .pf-v6-c-card .pf-v6-c-card__body {
     padding-block-start: var(--pf-t--global--spacer--sm);
     padding-block-end: var(--pf-t--global--spacer--sm);
@@ -62,16 +52,6 @@
     --pf-v6-l-gallery--GridTemplateColumns: repeat(auto-fit, minmax(var(--pf-v6-l-gallery--GridTemplateColumns--minmax--min), var(--pf-v6-l-gallery--GridTemplateColumns--minmax--max)));
 }
 
-// Booted/Staged/Rollback are parallel comparison columns, not unrelated
-// dashboard widgets (unlike e.g. Overview's cards) — without some separator
-// they read as one undifferentiated block of text. A vertical rule between
-// columns (not a card border) gives that structure while keeping the cards
-// themselves plain/borderless, matching the native convention.
-.ct-status-gallery > .pf-v6-c-card:not(:first-child) {
-    border-inline-start: 1px solid var(--pf-t--global--border--color--default);
-    padding-inline-start: var(--pf-t--global--spacer--lg);
-}
-
 .pf-v6-c-card__footer {
     text-align: center;
     padding-block-start: 2px;
@@ -90,6 +70,11 @@
 .ct-tracking-divider {
     margin-block-start: var(--pf-t--global--spacer--md);
     margin-block-end: calc(var(--pf-t--global--spacer--md) - 2px);
+}
+
+.ct-status-divider {
+    margin-block-start: 12px;
+    margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
 .ct-switch-label {

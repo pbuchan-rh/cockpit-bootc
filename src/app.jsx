@@ -331,6 +331,8 @@ export const App = () => {
                                 onDismiss={() => { setProgress([]); setProgressKind(null); }}
                             />
                         )}
+
+                        <Divider className="ct-status-divider" />
                     </CardBody>
                 </Card>
 

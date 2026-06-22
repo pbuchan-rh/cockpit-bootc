@@ -114,7 +114,7 @@ export const ImageStatus = ({
         <Gallery hasGutter minWidths={{ default: '280px' }} className="ct-status-gallery">
 
             {/* Booted image */}
-            <Card isFullHeight isPlain>
+            <Card isFullHeight>
                 <CardTitle>
                     <Label color="green">Booted</Label>
                     {bootedData.incompatible && (
@@ -127,7 +127,7 @@ export const ImageStatus = ({
             </Card>
 
             {/* Staged update */}
-            <Card isFullHeight isPlain>
+            <Card isFullHeight>
                 <CardTitle>
                     <Label color="blue">Staged Update</Label>
                 </CardTitle>
@@ -168,7 +168,7 @@ export const ImageStatus = ({
             </Card>
 
             {/* Rollback image */}
-            <Card isFullHeight isPlain>
+            <Card isFullHeight>
                 <CardTitle>
                     <Label color="red">Rollback</Label>
                 </CardTitle>

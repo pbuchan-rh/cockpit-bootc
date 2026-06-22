@@ -22,6 +22,24 @@
     --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--xs);
 }
 
+// Keep every action button as the same blue outline pill (PF6's secondary
+// variant), including when disabled — PF6's default disabled style turns
+// grey and drops the border entirely, which reads as "broken" rather than
+// "temporarily unavailable." Tint stays blue at reduced opacity instead.
+.pf-v6-c-button.pf-m-secondary:disabled,
+.pf-v6-c-button.pf-m-secondary.pf-m-disabled,
+.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled {
+    color: var(--pf-t--global--color--brand--default);
+    background: transparent;
+    opacity: 0.5;
+}
+
+.pf-v6-c-button.pf-m-secondary:disabled::after,
+.pf-v6-c-button.pf-m-secondary.pf-m-disabled::after,
+.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled::after {
+    border-color: var(--pf-t--global--color--brand--default);
+}
+
 .ct-progress-log {
     max-height: 16rem;
     overflow-y: auto;

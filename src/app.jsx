@@ -1,6 +1,7 @@
 import cockpit from 'cockpit';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
+import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
@@ -62,6 +63,7 @@ export const App = () => {
     const [adminAllowed, setAdminAllowed] = useState(true); // optimistic default; real enforcement is superuser:"require" on each call
     const [statusCachedAt, setStatusCachedAt] = useState(null); // set when status came from cache, not a live query
     const [bootHistory, setBootHistory] = useState([]);
+    const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -158,13 +160,14 @@ export const App = () => {
     }
 
     async function handleReboot() {
+        const wasRollback = rebootModal === 'rollback';
         setRebootModal(null);
         setPhase(PHASE.REBOOTING);
         try {
             await reboot();
         } catch (ex) {
             setError(ex.message);
-            setPhase(PHASE.ROLLBACK_STAGED);
+            setPhase(wasRollback ? PHASE.ROLLBACK_STAGED : PHASE.IDLE);
         }
     }
 
@@ -246,8 +249,18 @@ export const App = () => {
                     </Alert>
                 )}
 
-                {status?.usrOverlay && (
-                    <Alert variant="warning" title="/usr has a transient overlay mounted" isInline>
+                {status?.usrOverlay && !overlayWarningDismissed && (
+                    <Alert
+                        variant="warning"
+                        title="/usr has a transient overlay mounted"
+                        isInline
+                        actionClose={<Button variant="plain" onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
+                        actionLinks={
+                            <AlertActionLink onClick={() => setRebootModal('overlay')}>
+                                Reboot to Clear
+                            </AlertActionLink>
+                        }
+                    >
                         This system no longer matches its source image exactly — a writable overlay
                         ({status.usrOverlay.accessMode}, {status.usrOverlay.persistence}) is active on{' '}
                         <code>/usr</code>, likely from <code>bootc usr-overlay</code>. It will be
@@ -320,17 +333,23 @@ export const App = () => {
                 variant="small"
             >
                 <ModalHeader
-                    title={rebootModal === 'update' ? "Apply update and reboot?" : "Reboot to roll back?"}
+                    title={
+                        rebootModal === 'update' ? "Apply update and reboot?"
+                            : rebootModal === 'overlay' ? "Reboot to clear /usr overlay?"
+                                : "Reboot to roll back?"
+                    }
                 />
                 <ModalBody>
                     {rebootModal === 'update'
                         ? "The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed."
-                        : "The system will reboot into the previous image."
+                        : rebootModal === 'overlay'
+                            ? "The system will reboot, discarding the transient /usr overlay and any changes made through it."
+                            : "The system will reboot into the previous image."
                     }
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="danger"
+                        variant="secondary"
                         onClick={rebootModal === 'update' ? handleApplyUpdate : handleReboot}
                         isDisabled={!adminAllowed}
                     >
@@ -358,7 +377,7 @@ export const App = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="danger"
+                        variant="secondary"
                         onClick={() => confirmAction?.action === 'switch' ? handleSwitchImage(confirmAction.ref) : handleRollback()}
                         isDisabled={!adminAllowed}
                     >

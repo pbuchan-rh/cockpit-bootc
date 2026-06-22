@@ -53,7 +53,7 @@ export const SwitchImage = ({
                     </FlexItem>
                     <FlexItem>
                         <Button
-                            variant="link"
+                            variant="secondary"
                             onClick={() => onPreview(ref)}
                             isDisabled={disabled || previewing || !ref.trim()}
                             isLoading={previewing}

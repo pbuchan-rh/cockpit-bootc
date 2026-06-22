@@ -23,7 +23,7 @@ export const UpdateActions = ({
                 {checking ? "Checking…" : "Check for Updates"}
             </Button>
             <Button
-                variant="primary"
+                variant="secondary"
                 onClick={onDownloadUpdate}
                 isDisabled={disabled || checking || updateAvailable !== true}
                 isLoading={downloading}

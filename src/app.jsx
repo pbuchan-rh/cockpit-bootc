@@ -370,7 +370,9 @@ export const App = () => {
                         ? "The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed."
                         : rebootModal === 'overlay'
                             ? "The system will reboot, discarding the transient /usr overlay and any changes made through it."
-                            : "The system will reboot into the previous image."
+                            : <>The system will reboot into the previous image. <strong>This also reverts /etc to that image's
+                                frozen snapshot</strong> — any configuration changes made since then will be lost, not merged or
+                                preserved.</>
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -408,8 +410,8 @@ export const App = () => {
                             : confirmAction?.action === 'cancel-staged'
                                 ? "The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back."
                                 : status?.staged
-                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}).</>
-                                    : "The previous image will be staged for next boot. Nothing is applied until you reboot."
+                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}). Rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.</>
+                                    : <>The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.</>
                     }
                 </ModalBody>
                 <ModalFooter>

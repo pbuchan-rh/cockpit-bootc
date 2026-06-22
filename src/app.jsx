@@ -213,7 +213,7 @@ export const App = () => {
 
     if (loading) {
         return (
-            <Page className="no-masthead-sidebar">
+            <Page className="pf-m-no-sidebar">
                 <PageSection>
                     <Skeleton width="75%" screenreaderText="Loading image status" />
                     <br />
@@ -224,7 +224,7 @@ export const App = () => {
     }
 
     return (
-        <Page className="no-masthead-sidebar">
+        <Page className="pf-m-no-sidebar">
             <PageSection>
                 {error && !(!status && !adminAllowed) && (
                     <Alert

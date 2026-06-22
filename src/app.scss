@@ -72,12 +72,17 @@
 }
 
 .ct-tracking-divider {
-    margin-block: var(--pf-t--global--spacer--md);
+    margin-block-start: var(--pf-t--global--spacer--md);
+    margin-block-end: calc(var(--pf-t--global--spacer--md) - 2px);
 }
 
 .ct-switch-label {
     margin-block-end: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-switch-row {
+    padding-block-end: 4px;
 }
 
 .ct-progress-log-block {

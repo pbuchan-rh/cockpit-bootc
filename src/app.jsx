@@ -227,6 +227,18 @@ export const App = () => {
         }
     }
 
+    // Rollback only reorders local deployments — it doesn't touch the registry. If the
+    // auto-update timer is still enabled, its next scheduled run has no idea a human just
+    // deliberately rolled back to escape this exact image, and will silently re-stage and
+    // re-apply it again, undoing the rollback. Confirmed against the official RHEL image
+    // mode docs ("If you perform a rollback, the system will automatically update again
+    // unless you turn off auto-updates").
+    const autoUpdateWillUndoRollback = autoUpdateStatus === 'active' && (
+        <> Automatic updates are currently <strong>enabled</strong> — the update timer has no way to
+            know this was a deliberate rollback, so it will likely re-check, re-stage, and re-apply this
+            same image again on its next scheduled run unless you turn off automatic updates first.</>
+    );
+
     if (loading) {
         return (
             <Page className="pf-m-no-sidebar">
@@ -284,7 +296,7 @@ export const App = () => {
                     <CardBody>
                         {trackedRef && (
                             <p className="ct-tracked-ref">
-                                Currently tracking <code>{trackedRef}</code>
+                                <span className="ct-tracked-ref-label">Container image reference</span> <code>{trackedRef}</code>
                             </p>
                         )}
                         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
@@ -371,7 +383,7 @@ export const App = () => {
                             ? "The system will reboot, discarding the transient /usr overlay and any changes made through it."
                             : <>The system will reboot into the previous image. <strong>This also reverts /etc to that image's
                                 frozen snapshot</strong> — any configuration changes made since then will be lost, not merged or
-                                preserved.</>
+                                preserved.{autoUpdateWillUndoRollback}</>
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -409,8 +421,8 @@ export const App = () => {
                             : confirmAction?.action === 'cancel-staged'
                                 ? "The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back."
                                 : status?.staged
-                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}). Rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.</>
-                                    : <>The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.</>
+                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}). Rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.{autoUpdateWillUndoRollback}</>
+                                    : <>The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.{autoUpdateWillUndoRollback}</>
                     }
                 </ModalBody>
                 <ModalFooter>

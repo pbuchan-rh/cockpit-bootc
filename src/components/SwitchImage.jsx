@@ -4,6 +4,18 @@ import { DescriptionList, DescriptionListDescription, DescriptionListGroup, Desc
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 
+// preview.source comes straight from a registry-controlled image label — never
+// render it as a clickable href without checking the scheme first. React only
+// escapes text content, not href attribute values (e.g. a javascript: URI
+// would execute if clicked).
+function isSafeUrl(url) {
+    try {
+        return ["http:", "https:"].includes(new URL(url).protocol);
+    } catch {
+        return false;
+    }
+}
+
 export const SwitchImage = ({
     switching,
     disabled,
@@ -110,7 +122,9 @@ export const SwitchImage = ({
                             <DescriptionListGroup>
                                 <DescriptionListTerm>Base image source</DescriptionListTerm>
                                 <DescriptionListDescription>
-                                    <a href={preview.source} target="_blank" rel="noopener noreferrer">{preview.source}</a>
+                                    {isSafeUrl(preview.source)
+                                        ? <a href={preview.source} target="_blank" rel="noopener noreferrer">{preview.source}</a>
+                                        : preview.source}
                                     {preview.revision && <> @ <code>{preview.revision.slice(0, 12)}</code></>}
                                 </DescriptionListDescription>
                             </DescriptionListGroup>

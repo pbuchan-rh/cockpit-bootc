@@ -73,7 +73,7 @@ export function stageRollback() {
  * Used for rollback only — updates use applyUpdate() instead.
  */
 export async function reboot() {
-    const systemd = cockpit.dbus("org.freedesktop.systemd1");
+    const systemd = cockpit.dbus("org.freedesktop.systemd1", { bus: "system", superuser: "require" });
     const manager = systemd.proxy(
         "org.freedesktop.systemd1.Manager",
         "/org/freedesktop/systemd1"

@@ -10,9 +10,9 @@ function formatDigest(digest) {
 export const BootHistory = ({ entries }) => {
     return (
         <Card>
-            <CardTitle>Boot History</CardTitle>
+            <CardTitle>Image History</CardTitle>
             <CardBody>
-                <table className="ct-boot-history-table" role="grid" aria-label="Boot history">
+                <table className="ct-boot-history-table" role="grid" aria-label="Image history">
                     <thead>
                         <tr role="row">
                             <th role="columnheader" scope="col">Observed</th>

@@ -188,7 +188,7 @@ export function setAutoUpdate(enabled) {
  */
 export async function inspectImage(ref) {
     const output = await cockpit.spawn(
-        ["skopeo", "inspect", "--tls-verify=false", `docker://${ref}`],
+        ["skopeo", "inspect", `docker://${ref}`],
         { err: "message" }
     );
     const info = JSON.parse(output);
@@ -205,7 +205,7 @@ export async function inspectImage(ref) {
     const otherTags = (info.RepoTags || []).filter(tag => tag !== requestedTag);
     const matches = await Promise.allSettled(otherTags.map(async tag => {
         const tagOutput = await cockpit.spawn(
-            ["skopeo", "inspect", "--tls-verify=false", `docker://${repo}:${tag}`],
+            ["skopeo", "inspect", `docker://${repo}:${tag}`],
             { err: "ignore" }
         );
         return { tag, digest: JSON.parse(tagOutput).Digest };

@@ -82,6 +82,7 @@ export const ImageStatus = ({
     staged,
     rollback,
     phase,
+    rollbackQueued,
     disabled,
     onConfirmUpdate,
     onRollback,
@@ -93,7 +94,7 @@ export const ImageStatus = ({
 
     const isDownloading = phase === 'downloading';
     const isDownloaded = phase === 'downloaded';
-    const isRollbackStaged = phase === 'rollback_staged';
+    const isRollbackStaged = !!rollbackQueued;
     const isRebooting = phase === 'rebooting';
     const isBusy = isDownloading || isRebooting;
 

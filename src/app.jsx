@@ -44,7 +44,6 @@ const PHASE = {
     CHECKING: 'checking',
     DOWNLOADING: 'downloading',
     DOWNLOADED: 'downloaded',     // staged, awaiting reboot confirm
-    ROLLBACK_STAGED: 'rollback_staged', // awaiting reboot confirm
     REBOOTING: 'rebooting',
 };
 
@@ -170,8 +169,7 @@ export const App = () => {
         setError(null);
         try {
             await stageRollback();
-            await loadStatus();
-            setPhase(PHASE.ROLLBACK_STAGED);
+            await loadStatus(); // status.rollbackQueued now reflects this — no local flag needed
             setUpdateAvailable(null);
         } catch (ex) {
             setError(ex.message);
@@ -179,14 +177,13 @@ export const App = () => {
     }
 
     async function handleReboot() {
-        const wasRollback = rebootModal === 'rollback';
         setRebootModal(null);
         setPhase(PHASE.REBOOTING);
         try {
             await reboot();
         } catch (ex) {
             setError(ex.message);
-            setPhase(wasRollback ? PHASE.ROLLBACK_STAGED : PHASE.IDLE);
+            setPhase(PHASE.IDLE);
         }
     }
 
@@ -317,7 +314,7 @@ export const App = () => {
                                     updateAvailable={updateAvailable}
                                     checking={checking}
                                     downloading={phase === PHASE.DOWNLOADING}
-                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED || phase === PHASE.DOWNLOADED || !!status?.staged}
+                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged}
                                     onCheckForUpdates={handleCheckForUpdates}
                                     onDownloadUpdate={handleDownloadUpdate}
                                 />
@@ -330,7 +327,7 @@ export const App = () => {
                         <SwitchImage
                             recentRefs={recentRefs}
                             switching={switching}
-                            disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || phase === PHASE.ROLLBACK_STAGED}
+                            disabled={phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued}
                             switchDisabled={!adminAllowed}
                             onSwitch={ref => setConfirmAction({ action: 'switch', ref })}
                             previewing={previewing}
@@ -357,6 +354,7 @@ export const App = () => {
                         staged={status.staged}
                         rollback={status.rollback}
                         phase={phase}
+                        rollbackQueued={!!status.rollbackQueued}
                         disabled={!adminAllowed}
                         onConfirmUpdate={() => setRebootModal('update')}
                         onRollback={() => setConfirmAction({ action: 'rollback' })}

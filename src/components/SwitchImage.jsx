@@ -3,18 +3,7 @@ import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
-
-// preview.source comes straight from a registry-controlled image label — never
-// render it as a clickable href without checking the scheme first. React only
-// escapes text content, not href attribute values (e.g. a javascript: URI
-// would execute if clicked).
-function isSafeUrl(url) {
-    try {
-        return ["http:", "https:"].includes(new URL(url).protocol);
-    } catch {
-        return false;
-    }
-}
+import { isSafeUrl } from '../lib/url-safety.js';
 
 // Deliberately permissive — just enough to catch obvious typos (empty,
 // whitespace, no registry/repo separator at all) before wasting a skopeo

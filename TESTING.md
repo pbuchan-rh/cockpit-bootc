@@ -1,9 +1,15 @@
-# cockpit-bootc — Manual verification notes
+# cockpit-bootc — Test suite + manual verification notes
 
-There is no committed suite of real assertion-based tests yet (deliberately
-deferred — see `GOTCHAS.md` and project memory). Verification so far has been
-manual, live, ad-hoc Playwright scripts run against the real bootc appliance.
-This doc captures the working pattern so it doesn't have to be rediscovered.
+A real, committed, assertion-based Playwright suite exists under `tests/`
+(`status.spec.js`, `update-lifecycle.spec.js`, `rollback.spec.js`,
+`switch-image.spec.js`, `auto-update.spec.js`, `admin-gating.spec.js`,
+`security.spec.js`) — run with `npm test` against both Chromium and Firefox.
+Most tests perform real mutating actions (switch, rollback, toggling
+auto-update) against the live appliance and clean up after themselves,
+verified against real `bootc status --json`/`systemctl` state, not just the
+UI — see each spec for the specific cleanup step. This doc captures the
+patterns and pitfalls found writing them, so they don't have to be
+rediscovered for the next module.
 
 ## Scaffolding (`tests/`)
 
@@ -33,16 +39,38 @@ run (across all projects, not per-project) to a single worker, so `npm test`
 runs all of Chromium's tests, then all of Firefox's, one at a time — never
 both browsers hitting the shared live appliance/Cockpit session at once.
 
-`tests/adhoc/` holds ~90 throwaway scripts accumulated during development
+`tests/adhoc/` holds ~100 throwaway scripts accumulated during development
 (originally left in `/tmp`, moved here 2026-06-22 so they aren't lost to a
-reboot/tmp-cleaner). They're investigation scripts, not a test suite — most
-have no assertions, just `console.log`/screenshots, and many still hardcode
-host/credentials inline rather than using `tests/helpers/cockpit.js`. Treat them
-as a reference for "how was X verified," not something to run as CI.
+reboot/tmp-cleaner, plus the ones generated while debugging the admin-elevation
+bug below). They're investigation scripts, not a test suite — most have no
+assertions, just `console.log`/screenshots, and many still hardcode
+host/credentials inline rather than using `tests/helpers/cockpit.js`. Treat
+them as a reference for "how was X verified," not something to run as CI.
 
-**Backlog: turn the useful ad-hoc scripts into real `.spec.js` files** with
-actual `expect()` assertions, using `tests/helpers/cockpit.js` for login. Not
-done yet — flagged here so it isn't lost track of.
+## A real bug the suite caught immediately
+
+Writing `status.spec.js` surfaced a genuine, reproducible bug in
+`helpers/cockpit.js`'s `requestAdmin()`: it used a list of fallback selectors
+(each burning a full 5s timeout waiting for an element that was never going to
+appear) and pressed Enter to submit the password instead of clicking
+"Authenticate". The combination left the superuser handshake
+(`init` → `Prompt` → `Answer` → `Current: sudo`, visible via a WebSocket trace)
+incomplete by the time the helper returned, even though the shell's "Limited
+access" text had already disappeared — so every privileged bootc call hung
+indefinitely with no error once the module loaded. Fixed by mirroring the
+exact sequence already proven reliable elsewhere in this session: a single
+direct selector, an explicit click on "Authenticate", and a flat ~2s settle
+wait. A polling probe (repeatedly attempting a privileged spawn until one
+succeeds, instead of a flat wait) was tried first and made things *worse* —
+overlapping spawn attempts mid-handshake left orphaned
+`sudo -k -A cockpit-bridge` processes stuck server-side. If admin-elevation
+flakes out again, check `ps aux | grep cockpit-bridge` on the target host for
+this exact symptom before assuming it's a code regression.
+
+**Backlog:** the remaining ad-hoc scripts in `tests/adhoc/` may still contain
+useful coverage not yet ported into a real spec (e.g. progress-log streaming,
+cancel-during-download timing, focus/tab-order checks) — not done, flagged so
+it isn't lost track of.
 
 ## The login + navigation pattern
 

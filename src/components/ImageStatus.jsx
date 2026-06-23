@@ -21,6 +21,7 @@ function parseImageSlot(slot) {
         timestamp: img.timestamp ?? null,
         incompatible: slot.incompatible ?? false,
         softRebootCapable: slot.softRebootCapable ?? null,
+        pinned: slot.pinned ?? false,
     };
 }
 
@@ -89,6 +90,8 @@ export const ImageStatus = ({
     onCancelStagedUpdate,
     onCancelRollback,
     onConfirmReboot,
+    onTogglePin,
+    pinningSlot,
 }) => {
     const bootedData = parseImageSlot(booted);
     const stagedData = parseImageSlot(staged);
@@ -129,10 +132,23 @@ export const ImageStatus = ({
                     {bootedData.incompatible && (
                         <Label color="orange" style={{ marginLeft: '0.5rem' }}>Incompatible layers</Label>
                     )}
+                    {bootedData.pinned && (
+                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>Pinned</Label>
+                    )}
                 </CardTitle>
                 <CardBody>
                     <ImageInfo data={bootedData} />
                 </CardBody>
+                <CardFooter>
+                    <Button
+                        variant="secondary"
+                        onClick={() => onTogglePin('booted', bootedData.pinned)}
+                        isDisabled={disabled || pinningSlot === 'booted'}
+                        isLoading={pinningSlot === 'booted'}
+                    >
+                        {bootedData.pinned ? "Unpin" : "Pin"}
+                    </Button>
+                </CardFooter>
             </Card>
 
             {/* Staged update */}
@@ -140,7 +156,7 @@ export const ImageStatus = ({
                 <CardTitle>
                     <Label color="blue">Staged Update</Label>
                 </CardTitle>
-                <CardBody>
+                <CardBody className={!stagedData ? "ct-card-body-centered" : undefined}>
                     {stagedData
                         ? <ImageInfo data={stagedData} showRebootType />
                         : (
@@ -150,38 +166,43 @@ export const ImageStatus = ({
                         )
                     }
                 </CardBody>
-                <CardFooter>
-                    <Flex justifyContent={{ default: 'justifyContentCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
-                            <Button
-                                variant="secondary"
-                                onClick={onConfirmUpdate}
-                                isDisabled={disabled || isBusy || !(stagedData || isDownloaded)}
-                            >
-                                {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
-                            </Button>
-                        </FlexItem>
-                        {stagedData && (
+                {(stagedData || isDownloaded) && (
+                    <CardFooter>
+                        <Flex justifyContent={{ default: 'justifyContentCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
                             <FlexItem>
                                 <Button
-                                    variant="secondary"
-                                    onClick={onCancelStagedUpdate}
+                                    variant="primary"
+                                    onClick={onConfirmUpdate}
                                     isDisabled={disabled || isBusy}
                                 >
-                                    Cancel
+                                    {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
                                 </Button>
                             </FlexItem>
-                        )}
-                    </Flex>
-                </CardFooter>
+                            {stagedData && (
+                                <FlexItem>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={onCancelStagedUpdate}
+                                        isDisabled={disabled || isBusy}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </FlexItem>
+                            )}
+                        </Flex>
+                    </CardFooter>
+                )}
             </Card>
 
             {/* Rollback image */}
             <Card isFullHeight>
                 <CardTitle>
                     <Label color="red">Rollback</Label>
+                    {rollbackData?.pinned && !rollbackAmbiguous && (
+                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>Pinned</Label>
+                    )}
                 </CardTitle>
-                <CardBody>
+                <CardBody className={!rollbackData || rollbackAmbiguous ? "ct-card-body-centered" : undefined}>
                     {rollbackAmbiguous
                         ? (
                             <EmptyState variant="xs">
@@ -197,39 +218,55 @@ export const ImageStatus = ({
                             )
                     }
                 </CardBody>
-                <CardFooter>
-                    {rollbackData && !isRollbackStaged && !rollbackAmbiguous && (
-                        <Button
-                            variant="secondary"
-                            onClick={onRollback}
-                            isDisabled={disabled || isBusy}
-                        >
-                            Roll Back
-                        </Button>
-                    )}
-                    {isRollbackStaged && (
+                {rollbackData && !rollbackAmbiguous && (
+                    <CardFooter>
                         <Flex justifyContent={{ default: 'justifyContentCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                            {!isRollbackStaged && (
+                                <FlexItem>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={onRollback}
+                                        isDisabled={disabled || isBusy}
+                                    >
+                                        Roll Back
+                                    </Button>
+                                </FlexItem>
+                            )}
+                            {isRollbackStaged && (
+                                <>
+                                    <FlexItem>
+                                        <Button
+                                            variant="primary"
+                                            onClick={onConfirmReboot}
+                                            isDisabled={disabled || isRebooting}
+                                        >
+                                            {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
+                                        </Button>
+                                    </FlexItem>
+                                    <FlexItem>
+                                        <Button
+                                            variant="secondary"
+                                            onClick={onCancelRollback}
+                                            isDisabled={disabled || isRebooting}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </FlexItem>
+                                </>
+                            )}
                             <FlexItem>
                                 <Button
                                     variant="secondary"
-                                    onClick={onConfirmReboot}
-                                    isDisabled={disabled || isRebooting}
+                                    onClick={() => onTogglePin('rollback', rollbackData.pinned)}
+                                    isDisabled={disabled || pinningSlot === 'rollback'}
+                                    isLoading={pinningSlot === 'rollback'}
                                 >
-                                    {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
-                                </Button>
-                            </FlexItem>
-                            <FlexItem>
-                                <Button
-                                    variant="secondary"
-                                    onClick={onCancelRollback}
-                                    isDisabled={disabled || isRebooting}
-                                >
-                                    Cancel
+                                    {rollbackData.pinned ? "Unpin" : "Pin"}
                                 </Button>
                             </FlexItem>
                         </Flex>
-                    )}
-                </CardFooter>
+                    </CardFooter>
+                )}
             </Card>
 
         </Gallery>

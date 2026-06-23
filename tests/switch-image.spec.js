@@ -10,9 +10,9 @@ test.describe('switch image', () => {
         await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });
     });
 
-    test('Preview shows real registry data before any commitment', async ({ page }) => {
+    test('Inspect shows real registry data before any commitment', async ({ page }) => {
         await page.fill('#switch-image-ref', OTHER_TAG_REF);
-        await page.locator('button:has-text("Preview")').click();
+        await page.locator('button:has-text("Inspect")').click();
         await expect(page.locator('button:has-text("Inspecting")')).toHaveCount(0, { timeout: 20000 });
 
         const preview = page.locator('.ct-switch-preview');
@@ -27,7 +27,7 @@ test.describe('switch image', () => {
     test('Switch stages the new image, then switching back restores original state', async ({ page }) => {
         // --- Switch to the other tag ---
         await page.fill('#switch-image-ref', OTHER_TAG_REF);
-        await page.locator('button:has-text("Preview")').click();
+        await page.locator('button:has-text("Inspect")').click();
         await expect(page.locator('button:has-text("Inspecting")')).toHaveCount(0, { timeout: 20000 });
         await page.locator('button:has-text("Switch")').click();
 
@@ -41,7 +41,7 @@ test.describe('switch image', () => {
 
         // --- Switch back to the original ref to leave the appliance clean ---
         await page.fill('#switch-image-ref', ORIGINAL_REF);
-        await page.locator('button:has-text("Preview")').click();
+        await page.locator('button:has-text("Inspect")').click();
         await expect(page.locator('button:has-text("Inspecting")')).toHaveCount(0, { timeout: 20000 });
         await page.locator('button:has-text("Switch")').click();
         await expect(page.locator('text=Switch image?')).toBeVisible();

@@ -8,13 +8,15 @@ const DONE_HINT = {
     switch: "Switch complete — staged below. Click \"Apply & Reboot\" when you're ready to use it.",
 };
 
-export const ProgressLog = ({ lines, running, kind, onDismiss }) => {
+export const ProgressLog = ({ lines, running, kind, unchanged, onDismiss }) => {
     const codeRef = useRef(null);
 
     useEffect(() => {
         if (codeRef.current)
             codeRef.current.scrollTop = codeRef.current.scrollHeight;
     }, [lines]);
+
+    const doneHint = unchanged ? "Already running this image — nothing to switch." : (DONE_HINT[kind] || "Done.");
 
     return (
         <div className="ct-progress-log-block">
@@ -36,7 +38,7 @@ export const ProgressLog = ({ lines, running, kind, onDismiss }) => {
                 </div>
             </CodeBlock>
             {!running && (
-                <p className="ct-progress-done-hint">{DONE_HINT[kind] || "Done."}</p>
+                <p className="ct-progress-done-hint">{doneHint}</p>
             )}
         </div>
     );

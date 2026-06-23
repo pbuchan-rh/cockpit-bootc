@@ -25,6 +25,8 @@ import {
     getNextAutoUpdateRun,
     switchImage,
     inspectImage,
+    setDeploymentPinned,
+    getPinnedDeploymentCount,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -65,6 +67,8 @@ export const App = () => {
     const [checking, setChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(null);
     const [switching, setSwitching] = useState(false);
+    const [pinningSlot, setPinningSlot] = useState(null); // 'booted' | 'staged' | 'rollback' | null
+    const [pinnedCount, setPinnedCount] = useState(null); // { pinned, total } across the full ostree deployment list
     const [previewing, setPreviewing] = useState(false);
     const [preview, setPreview] = useState(null);
     const [previewError, setPreviewError] = useState(null);
@@ -73,6 +77,7 @@ export const App = () => {
     const [overlayWarningDismissed, setOverlayWarningDismissed] = useState(false);
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
+    const [switchUnchanged, setSwitchUnchanged] = useState(false); // switch target matched the already-tracked ref
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
     const [now, setNow] = useState(Date.now());
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
@@ -104,6 +109,7 @@ export const App = () => {
         // failure on getStatus() below doesn't block it too.
         getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
         getNextAutoUpdateRun().then(setNextAutoUpdateRun).catch(() => {});
+        getPinnedDeploymentCount().then(setPinnedCount).catch(() => {});
 
         try {
             const s = await getStatus();
@@ -180,6 +186,19 @@ export const App = () => {
         }
     }
 
+    async function handleTogglePin(slot, currentlyPinned) {
+        setError(null);
+        setPinningSlot(slot);
+        try {
+            await setDeploymentPinned(slot, !currentlyPinned);
+            await loadStatus();
+        } catch (ex) {
+            setError(ex.message);
+        } finally {
+            setPinningSlot(null);
+        }
+    }
+
     async function handleCancelStagedUpdate() {
         setConfirmAction(null);
         setError(null);
@@ -209,6 +228,10 @@ export const App = () => {
         setError(null);
         setProgress([]);
         setProgressKind('switch');
+        // Determine "no-op switch" from our own known state, not by parsing
+        // bootc's English status text out of the streamed output — that
+        // text is locale-dependent and could change with any bootc version.
+        setSwitchUnchanged(trackedRef === ref);
         try {
             await switchImage(ref, line => setProgress(p => [...p, line]));
             await loadStatus();
@@ -315,7 +338,7 @@ export const App = () => {
 
                 <Card isPlain>
                     <CardHeader
-                        className="ct-image-ref-header"
+                        id="ct-image-ref-header"
                         actions={{
                             actions: (
                                 <Flex direction={{ default: 'column' }} alignItems={{ default: 'alignItemsFlexStart' }} spaceItems={{ default: 'spaceItemsSm' }}>
@@ -391,6 +414,7 @@ export const App = () => {
                                 lines={progress}
                                 running={phase === PHASE.DOWNLOADING || switching}
                                 kind={progressKind}
+                                unchanged={progressKind === 'switch' && switchUnchanged}
                                 onDismiss={() => { setProgress([]); setProgressKind(null); }}
                             />
                         )}
@@ -412,7 +436,17 @@ export const App = () => {
                         onCancelStagedUpdate={() => setConfirmAction({ action: 'cancel-staged' })}
                         onCancelRollback={handleRollback}
                         onConfirmReboot={() => setRebootModal('rollback')}
+                        onTogglePin={handleTogglePin}
+                        pinningSlot={pinningSlot}
                     />
+                )}
+
+                {pinnedCount && pinnedCount.pinned > 0 && (
+                    <Tooltip content="Pinned deployments stay on disk indefinitely, even after rolling off the cards above. Run `ostree admin status` to see all of them (numbered 0, 1, 2... top to bottom), then `ostree admin pin -u <that number>` to unpin.">
+                        <p className="ct-pinned-count">
+                            {pinnedCount.pinned} of {pinnedCount.total} deployments pinned
+                        </p>
+                    </Tooltip>
                 )}
             </PageSection>
 
@@ -440,7 +474,7 @@ export const App = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="secondary"
+                        variant="primary"
                         onClick={rebootModal === 'update' ? handleApplyUpdate : handleReboot}
                         isDisabled={!adminAllowed}
                     >
@@ -479,7 +513,7 @@ export const App = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="secondary"
+                        variant="primary"
                         onClick={() => {
                             if (confirmAction?.action === 'switch') handleSwitchImage(confirmAction.ref);
                             else if (confirmAction?.action === 'autoupdate-enable') { setConfirmAction(null); handleAutoUpdateToggle(true); }

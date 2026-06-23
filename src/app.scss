@@ -13,6 +13,13 @@
     --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--xs);
 }
 
+.pf-v6-c-card__body.ct-card-body-centered {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-block-start: 3rem;
+}
+
 // Keep every action button as the same blue outline pill (PF6's secondary
 // variant), including when disabled — PF6's default disabled style turns
 // grey and drops the border entirely, which reads as "broken" rather than
@@ -61,22 +68,30 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
+.ct-pinned-count {
+    display: inline-block;
+    color: var(--pf-t--global--text--color--subtle);
+    margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
 // Split the header into two equal-width halves and center each block as a
 // unit within its own half — but keep each block's own contents (title +
 // ref line, or buttons + toggle) left-justified relative to each other, so
 // only the block's outer position moves, not its internal text alignment.
 // Cockpit's shared card CSS sets justify-content: space-between via
 // `.pf-v6-c-card .pf-v6-c-card__header:not(.ct-card-expandable-header) ...`
-// (4 class-equivalents) and loads after this file, so a lower-specificity
-// override here loses the cascade — repeating the class bumps specificity
-// past that without resorting to !important.
-.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__header-main,
-.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__actions {
+// and loads after this file, so a same-or-lower-specificity class override
+// loses the cascade. An ID selector always outranks any number of classes
+// regardless of how many Cockpit's own selector uses, so it can't be
+// silently defeated by a future upstream CSS change the way a repeated-class
+// hack could.
+#ct-image-ref-header .pf-v6-c-card__header-main,
+#ct-image-ref-header .pf-v6-c-card__actions {
     flex: 1 1 50%;
     justify-content: center;
 }
 
-.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__title-text {
+#ct-image-ref-header .pf-v6-c-card__title-text {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -85,11 +100,11 @@
 // A floating vertical rule at the seam between the two halves — inset from
 // top/bottom so it doesn't connect to the card's edges, unlike the
 // full-height column dividers used between Booted/Staged/Rollback below.
-.ct-image-ref-header .pf-v6-c-card__actions {
+#ct-image-ref-header .pf-v6-c-card__actions {
     position: relative;
 }
 
-.ct-image-ref-header .pf-v6-c-card__actions::before {
+#ct-image-ref-header .pf-v6-c-card__actions::before {
     content: "";
     position: absolute;
     inset-inline-start: 0;

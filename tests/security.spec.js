@@ -44,14 +44,14 @@ test.describe('security', () => {
         expect(isSafeUrl('http://internal-registry.lab/source')).toBe(true);
     });
 
-    test('an invalid-looking ref keeps Preview/Switch disabled, never reaches the registry', async ({ page }) => {
+    test('an invalid-looking ref keeps Inspect/Switch disabled, never reaches the registry', async ({ page }) => {
         await loginToCockpit(page);
         await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });
 
         // looksLikeImageRef() gates these buttons — confirm the real live
         // behavior, not just the source function in isolation.
         await page.fill('#switch-image-ref', 'not a valid ref at all');
-        await expect(page.locator('button:has-text("Preview")')).toBeDisabled();
+        await expect(page.locator('button:has-text("Inspect")')).toBeDisabled();
         await expect(page.locator('button:has-text("Switch")')).toBeDisabled();
     });
 });

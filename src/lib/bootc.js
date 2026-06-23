@@ -40,6 +40,25 @@ export async function getStatus() {
 }
 
 /**
+ * Count pinned deployments across the *entire* ostree deployment list, not
+ * just the 3 slots `bootc status` reports (booted/staged/rollback). A
+ * deployment pinned today can rotate out of all 3 of those after enough
+ * later upgrades while still sitting on disk, pinned, invisible to
+ * `bootc status` — this is the only way to see it's still there.
+ */
+export async function getPinnedDeploymentCount() {
+    const output = await cockpit.spawn(
+        ["ostree", "admin", "status", "--json"],
+        { superuser: "require", err: "message" }
+    );
+    const { deployments } = JSON.parse(output);
+    return {
+        pinned: deployments.filter(d => d.pinned).length,
+        total: deployments.length,
+    };
+}
+
+/**
  * Check for an available update without downloading.
  * Returns true if an update is available, false if already up to date.
  *
@@ -103,6 +122,32 @@ export async function stageRollback() {
             withLock(["bootc", "rollback"]),
             { superuser: "require", err: "message" }
         );
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
+}
+
+// bootc's deployment slots map directly to ostree's own index names. There's
+// no "staged" entry here — ostree refuses to pin a staged-but-unapplied
+// deployment ("error: Cannot pin staged deployment", confirmed live), so
+// that slot intentionally has no Pin button in the UI.
+const OSTREE_PIN_INDEX = { booted: "booted", rollback: "rollback" };
+
+/**
+ * Pin or unpin a deployment so it's protected from bootc's automatic
+ * garbage collection (which otherwise only keeps booted + 1 rollback and
+ * prunes anything older). `bootc` itself has no pin/unpin command — this is
+ * the underlying ostree primitive bootc's own `status --json` already
+ * reports via the `pinned` field on each slot, just not settable through
+ * `bootc edit` (which only touches the `spec` section).
+ */
+export async function setDeploymentPinned(slot, pinned) {
+    const index = OSTREE_PIN_INDEX[slot];
+    const args = ["ostree", "admin", "pin"];
+    if (!pinned) args.push("--unpin");
+    args.push(index);
+    try {
+        return await cockpit.spawn(args, { superuser: "require", err: "message" });
     } catch (ex) {
         throw asFriendlyError(ex);
     }

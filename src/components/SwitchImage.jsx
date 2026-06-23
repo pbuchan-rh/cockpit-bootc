@@ -61,12 +61,12 @@ export const SwitchImage = ({
                             isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
                             isLoading={previewing}
                         >
-                            {previewing ? "Inspecting…" : (preview || previewError) ? "Hide Preview" : "Preview"}
+                            {previewing ? "Inspecting…" : (preview || previewError) ? "Hide Inspection" : "Inspect"}
                         </Button>
                     </FlexItem>
                     <FlexItem>
                         <Button
-                            variant="secondary"
+                            variant={preview ? "primary" : "secondary"}
                             onClick={() => onSwitch(ref)}
                             isDisabled={disabled || switchDisabled || switching || !ref.trim() || !preview}
                             isLoading={switching}

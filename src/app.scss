@@ -61,9 +61,45 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-.ct-last-checked {
-    color: var(--pf-t--global--text--color--subtle);
-    font-size: var(--pf-t--global--font--size--sm);
+// Split the header into two equal-width halves and center each block as a
+// unit within its own half — but keep each block's own contents (title +
+// ref line, or buttons + toggle) left-justified relative to each other, so
+// only the block's outer position moves, not its internal text alignment.
+// Cockpit's shared card CSS sets justify-content: space-between via
+// `.pf-v6-c-card .pf-v6-c-card__header:not(.ct-card-expandable-header) ...`
+// (4 class-equivalents) and loads after this file, so a lower-specificity
+// override here loses the cascade — repeating the class bumps specificity
+// past that without resorting to !important.
+.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__header-main,
+.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__actions {
+    flex: 1 1 50%;
+    justify-content: center;
+}
+
+.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header.ct-image-ref-header .pf-v6-c-card__title-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+// A floating vertical rule at the seam between the two halves — inset from
+// top/bottom so it doesn't connect to the card's edges, unlike the
+// full-height column dividers used between Booted/Staged/Rollback below.
+.ct-image-ref-header .pf-v6-c-card__actions {
+    position: relative;
+}
+
+.ct-image-ref-header .pf-v6-c-card__actions::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block: -1px;
+    width: 1px;
+    background-color: var(--pf-t--global--border--color--default);
+}
+
+.ct-auto-update-row {
+    margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 .ct-tracking-divider {

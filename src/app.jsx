@@ -11,6 +11,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-co
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
 import { Skeleton } from "@patternfly/react-core/dist/esm/components/Skeleton/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
+import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 
 import {
     getStatus,
@@ -31,6 +32,17 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
+
+// "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so the badge
+// tooltip stays roughly fresh without needing a re-render trigger elsewhere.
+function formatAgo(date, now) {
+    const seconds = Math.floor((now - date.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+}
 
 // Phases of the update/rollback lifecycle
 const PHASE = {
@@ -62,7 +74,14 @@ export const App = () => {
     const [trackedRef, setTrackedRef] = useState(null); // spec.image.image — what upgrade/check actually targets
     const [progressKind, setProgressKind] = useState(null); // 'download' | 'switch' | null
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
+    const [now, setNow] = useState(Date.now());
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
+
+    useEffect(() => {
+        if (!lastChecked) return;
+        const id = setInterval(() => setNow(Date.now()), 30000);
+        return () => clearInterval(id);
+    }, [lastChecked]);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -106,6 +125,7 @@ export const App = () => {
     const runCheckForUpdates = useCallback(async () => {
         setChecking(true);
         setError(null);
+        setUpdateAvailable(null); // hide the stale badge while this check is in flight
         try {
             const available = await checkForUpdates(trackedRef, status?.booted?.image?.imageDigest);
             setUpdateAvailable(available);
@@ -295,17 +315,29 @@ export const App = () => {
 
                 <Card isPlain>
                     <CardHeader
+                        className="ct-image-ref-header"
                         actions={{
                             actions: (
-                                <UpdateActions
-                                    updateAvailable={updateAvailable}
-                                    checking={checking}
-                                    lastChecked={lastChecked}
-                                    downloading={phase === PHASE.DOWNLOADING}
-                                    disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged || switching}
-                                    onCheckForUpdates={handleCheckForUpdates}
-                                    onDownloadUpdate={handleDownloadUpdate}
-                                />
+                                <Flex direction={{ default: 'column' }} alignItems={{ default: 'alignItemsFlexStart' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                    <FlexItem>
+                                        <UpdateActions
+                                            updateAvailable={updateAvailable}
+                                            checking={checking}
+                                            downloading={phase === PHASE.DOWNLOADING}
+                                            disabled={!adminAllowed || phase === PHASE.DOWNLOADING || phase === PHASE.REBOOTING || !!status?.rollbackQueued || phase === PHASE.DOWNLOADED || !!status?.staged || switching}
+                                            onCheckForUpdates={handleCheckForUpdates}
+                                            onDownloadUpdate={handleDownloadUpdate}
+                                        />
+                                    </FlexItem>
+                                    <FlexItem>
+                                        <AutoUpdate
+                                            status={autoUpdateStatus}
+                                            nextRun={nextAutoUpdateRun}
+                                            onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
+                                            disabled={!adminAllowed}
+                                        />
+                                    </FlexItem>
+                                </Flex>
                             ),
                         }}
                     >
@@ -317,9 +349,11 @@ export const App = () => {
                                     </FlexItem>
                                     {updateAvailable !== null && (
                                         <FlexItem>
-                                            <Label isCompact color={updateAvailable ? 'blue' : 'green'}>
-                                                {updateAvailable ? 'Update available' : 'Up to date'}
-                                            </Label>
+                                            <Tooltip content={`Checked ${formatAgo(lastChecked, now)}`}>
+                                                <Label isCompact color={updateAvailable ? 'blue' : 'green'}>
+                                                    {updateAvailable ? 'Update available' : 'Up to date'}
+                                                </Label>
+                                            </Tooltip>
                                         </FlexItem>
                                     )}
                                 </Flex>
@@ -328,13 +362,6 @@ export const App = () => {
                         )}
                     </CardHeader>
                     <CardBody>
-                        <AutoUpdate
-                            status={autoUpdateStatus}
-                            nextRun={nextAutoUpdateRun}
-                            onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
-                            disabled={!adminAllowed}
-                        />
-
                         <Divider className="ct-tracking-divider" />
 
                         <SwitchImage

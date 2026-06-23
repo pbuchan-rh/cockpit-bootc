@@ -4,6 +4,15 @@
     gap: var(--pf-t--global--spacer--lg);
 }
 
+// Cockpit's own Overview page overrides its insights card border to the
+// --default token instead of PatternFly's --subtle default — but in this
+// PatternFly version --default and --subtle resolve to the exact same
+// color (#e0e0e0, confirmed live), so that alone produces no visible
+// change. Use --100 instead for a border that's actually darker.
+.pf-v6-c-card {
+    --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--100);
+}
+
 .pf-v6-c-card .pf-v6-c-card__body {
     padding-block-start: var(--pf-t--global--spacer--sm);
     padding-block-end: var(--pf-t--global--spacer--sm);
@@ -110,7 +119,14 @@
     inset-inline-start: 0;
     inset-block: -1px;
     width: 1px;
-    background-color: var(--pf-t--global--border--color--default);
+    background-color: var(--pf-t--global--border--color--100);
+}
+
+// PatternFly's Divider component also defaults to --default, which is the
+// same washed-out gray as --subtle in this version (see card border note
+// above) — darken it the same way for the dividers between sections.
+.pf-v6-c-divider {
+    --pf-v6-c-divider--Color: var(--pf-t--global--border--color--100);
 }
 
 .ct-auto-update-row {

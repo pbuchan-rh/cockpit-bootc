@@ -118,10 +118,18 @@ export async function stageRollback() {
  * it twice reverts the ordering), calling it twice in sequence discards the
  * stage and immediately undoes that side effect — net effect is exactly
  * "forget the staged update," not "forget it AND queue a rollback."
+ *
+ * The two calls aren't atomic — if the connection drops between them, the
+ * appliance is left with a real rollback queued. Check status after the
+ * first call and only fire the second if it's actually still needed, so an
+ * interruption can't leave a silent surprise rollback for next reboot.
  */
 export async function cancelStagedUpdate() {
     await stageRollback();
-    await stageRollback();
+    const status = await getStatus();
+    if (status.status?.rollbackQueued) {
+        await stageRollback();
+    }
 }
 
 /**
@@ -202,7 +210,9 @@ export async function inspectImage(ref) {
     const lastColon = ref.lastIndexOf(':');
     const repo = lastColon > lastSlash ? ref.slice(0, lastColon) : ref;
     const requestedTag = lastColon > lastSlash ? ref.slice(lastColon + 1) : null;
-    const otherTags = (info.RepoTags || []).filter(tag => tag !== requestedTag);
+    // Cap how many other tags we cross-check — a repo with hundreds of CI
+    // tags would otherwise mean hundreds of skopeo calls per single preview.
+    const otherTags = (info.RepoTags || []).filter(tag => tag !== requestedTag).slice(0, 20);
     const matches = await Promise.allSettled(otherTags.map(async tag => {
         const tagOutput = await cockpit.spawn(
             ["skopeo", "inspect", `docker://${repo}:${tag}`],

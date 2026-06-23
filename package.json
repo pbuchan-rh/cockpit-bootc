@@ -17,6 +17,8 @@
     "stylelint": "stylelint src/*.{css,scss}",
     "stylelint:fix": "stylelint --fix src/*.{css,scss}",
     "test": "playwright test --config=tests/playwright.config.js",
+    "test:chromium": "playwright test --config=tests/playwright.config.js --project=chromium",
+    "test:firefox": "playwright test --config=tests/playwright.config.js --project=firefox",
     "test:list": "playwright test --config=tests/playwright.config.js --list"
   },
   "devDependencies": {

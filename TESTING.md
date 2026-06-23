@@ -22,6 +22,17 @@ be reused by future Cockpit modules — see "Testing" in the shared
 `~/Projects/cockpit/CLAUDE.md` for the documented standard, with this directory
 as the reference implementation.
 
+**Both Chromium and Firefox are required** — `playwright.config.js` defines a
+project for each, since Cockpit itself needs to work in both. Install both
+browsers (`npx playwright install chromium firefox`) and run the full matrix
+with `npm test`, or a single browser with `npm run test:chromium` /
+`npm run test:firefox` while iterating on one spec.
+
+**The two browsers never run concurrently.** `workers: 1` caps the *entire*
+run (across all projects, not per-project) to a single worker, so `npm test`
+runs all of Chromium's tests, then all of Firefox's, one at a time — never
+both browsers hitting the shared live appliance/Cockpit session at once.
+
 `tests/adhoc/` holds ~90 throwaway scripts accumulated during development
 (originally left in `/tmp`, moved here 2026-06-22 so they aren't lost to a
 reboot/tmp-cleaner). They're investigation scripts, not a test suite — most

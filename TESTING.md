@@ -1,15 +1,37 @@
 # cockpit-bootc — Manual verification notes
 
-There is no committed automated test suite yet (deliberately deferred — see
-`GOTCHAS.md` and project memory). Verification so far has been manual, live, ad-hoc
-Playwright scripts run against the real bootc appliance. This doc captures the
-working pattern so it doesn't have to be rediscovered.
+There is no committed suite of real assertion-based tests yet (deliberately
+deferred — see `GOTCHAS.md` and project memory). Verification so far has been
+manual, live, ad-hoc Playwright scripts run against the real bootc appliance.
+This doc captures the working pattern so it doesn't have to be rediscovered.
 
-When a real test suite does get built, mirror cockpit-scap's structure
-(`@playwright/test` with `global-setup.js`/`global-teardown.js`, `.env` for
-`COCKPIT_URL`, `fullyParallel: false` since a Cockpit session is shared state) —
-that's a working, project-proven precedent, not Cockpit's own `testlib.py`
-convention.
+## Scaffolding (`tests/`)
+
+`tests/playwright.config.js` + `tests/.env` (copy `tests/.env.example`,
+gitignored) + `tests/helpers/cockpit.js` give any script or future `.spec.js`
+file a working `loginToCockpit(page)` without re-deriving the login/admin-unlock/
+navigate dance each time. This intentionally does **not** mirror cockpit-scap's
+`global-setup.js`/`global-teardown.js` — those reset a `settings.json` file via
+SSH between runs, and cockpit-bootc has no settings file to reset (it's
+deliberately stateless). Resetting *bootc's* state between test runs means real
+`bootc switch`/`rollback` calls, which is a different problem to solve later if
+a real suite needs it.
+
+This pattern (config shape, `.env` for creds, generic login helper) is meant to
+be reused by future Cockpit modules — see "Testing" in the shared
+`~/Projects/cockpit/CLAUDE.md` for the documented standard, with this directory
+as the reference implementation.
+
+`tests/adhoc/` holds ~90 throwaway scripts accumulated during development
+(originally left in `/tmp`, moved here 2026-06-22 so they aren't lost to a
+reboot/tmp-cleaner). They're investigation scripts, not a test suite — most
+have no assertions, just `console.log`/screenshots, and many still hardcode
+host/credentials inline rather than using `tests/helpers/cockpit.js`. Treat them
+as a reference for "how was X verified," not something to run as CI.
+
+**Backlog: turn the useful ad-hoc scripts into real `.spec.js` files** with
+actual `expect()` assertions, using `tests/helpers/cockpit.js` for login. Not
+done yet — flagged here so it isn't lost track of.
 
 ## The login + navigation pattern
 

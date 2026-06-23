@@ -2,3 +2,10 @@ dist/
 node_modules/
 metafile.json
 reference/
+
+# Playwright — credentials and generated artifacts stay local
+tests/.env
+tests/screenshots/
+tests/report/
+tests/test-results/
+test-results/

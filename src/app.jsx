@@ -36,7 +36,7 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
-import { OrphanedPinWarning } from './components/OrphanedPinWarning.jsx';
+import { OrphanedPinList } from './components/OrphanedPinList.jsx';
 
 // "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so the badge
 // tooltip stays roughly fresh without needing a re-render trigger elsewhere.
@@ -460,7 +460,7 @@ export const App = () => {
                     />
                 )}
 
-                <OrphanedPinWarning
+                <OrphanedPinList
                     deployments={deployments}
                     pinningIndex={pinningIndex}
                     onUnpin={handleTogglePinByIndex}

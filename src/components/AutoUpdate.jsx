@@ -11,8 +11,8 @@ function formatCountdown(nextRunMs, now) {
     if (seconds < 60) return _("due any moment");
     const minutes = Math.floor(seconds / 60) % 60;
     const hours = Math.floor(seconds / 3600);
-    if (hours === 0) return cockpit.format(_("in $0m"), minutes);
-    return cockpit.format(_("in $0h $1m"), hours, minutes);
+    if (hours === 0) return cockpit.format(_("in ${0}m"), minutes);
+    return cockpit.format(_("in ${0}h ${1}m"), hours, minutes);
 }
 
 export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {

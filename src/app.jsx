@@ -46,9 +46,9 @@ function formatAgo(date, now) {
     const seconds = Math.floor((now - date.getTime()) / 1000);
     if (seconds < 60) return _("just now");
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return cockpit.format(_("$0m ago"), minutes);
+    if (minutes < 60) return cockpit.format(_("${0}m ago"), minutes);
     const hours = Math.floor(minutes / 60);
-    return cockpit.format(_("$0h ago"), hours);
+    return cockpit.format(_("${0}h ago"), hours);
 }
 
 // Phases of the update/rollback lifecycle

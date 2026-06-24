@@ -1,6 +1,9 @@
+import cockpit from 'cockpit';
 import React from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
+
+const _ = cockpit.gettext;
 
 export const UpdateActions = ({
     updateAvailable,
@@ -19,7 +22,7 @@ export const UpdateActions = ({
                     isDisabled={disabled || checking}
                     isLoading={checking}
                 >
-                    {checking ? "Checking…" : "Check for Updates"}
+                    {checking ? _("Checking…") : _("Check for Updates")}
                 </Button>
             </FlexItem>
             <FlexItem>
@@ -29,7 +32,7 @@ export const UpdateActions = ({
                     isDisabled={disabled || checking || updateAvailable !== true}
                     isLoading={downloading}
                 >
-                    {downloading ? "Downloading…" : "Download Update"}
+                    {downloading ? _("Downloading…") : _("Download Update")}
                 </Button>
             </FlexItem>
         </Flex>

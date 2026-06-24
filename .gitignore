@@ -3,6 +3,11 @@ node_modules/
 metafile.json
 reference/
 
+# generated at build time, same as every other Cockpit module (po/*.po —
+# real translations, if any ever get contributed — are committed normally)
+/po/*.pot
+/po/LINGUAS
+
 # Playwright — credentials and generated artifacts stay local
 tests/.env
 tests/screenshots/

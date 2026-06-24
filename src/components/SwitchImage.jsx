@@ -1,9 +1,12 @@
+import cockpit from 'cockpit';
 import React, { useState } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { isSafeUrl } from '../lib/url-safety.js';
+
+const _ = cockpit.gettext;
 
 // Deliberately permissive — just enough to catch obvious typos (empty,
 // whitespace, no registry/repo separator at all) before wasting a skopeo
@@ -36,7 +39,7 @@ export const SwitchImage = ({
         <>
                 <Flex alignItems={{ default: 'alignItemsCenter' }} className="ct-switch-row">
                     <FlexItem>
-                        <label htmlFor="switch-image-ref" className="ct-switch-label">Track a different image:</label>
+                        <label htmlFor="switch-image-ref" className="ct-switch-label">{_("Track a different image:")}</label>
                     </FlexItem>
                     <FlexItem grow={{ default: 'grow' }}>
                         <TextInput
@@ -50,8 +53,8 @@ export const SwitchImage = ({
                                     onPreview(ref);
                                 }
                             }}
-                            placeholder="registry.example.com/namespace/image:tag"
-                            aria-label="Image reference"
+                            placeholder={_("registry.example.com/namespace/image:tag")}
+                            aria-label={_("Image reference")}
                         />
                     </FlexItem>
                     <FlexItem>
@@ -61,7 +64,7 @@ export const SwitchImage = ({
                             isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
                             isLoading={previewing}
                         >
-                            {previewing ? "Inspecting…" : (preview || previewError) ? "Hide Inspection" : "Inspect"}
+                            {previewing ? _("Inspecting…") : (preview || previewError) ? _("Hide Inspection") : _("Inspect")}
                         </Button>
                     </FlexItem>
                     <FlexItem>
@@ -71,53 +74,53 @@ export const SwitchImage = ({
                             isDisabled={disabled || switchDisabled || switching || !ref.trim() || !preview}
                             isLoading={switching}
                         >
-                            {switching ? "Switching…" : "Switch"}
+                            {switching ? _("Switching…") : _("Switch")}
                         </Button>
                     </FlexItem>
                 </Flex>
 
                 {previewError && (
-                    <p className="ct-switch-preview-error">Could not inspect image: {previewError}</p>
+                    <p className="ct-switch-preview-error">{cockpit.format(_("Could not inspect image: $0"), previewError)}</p>
                 )}
 
                 {preview && !previewError && (
                     <div className="ct-switch-preview-block">
                     <DescriptionList isCompact isHorizontal className="ct-switch-preview">
                         <DescriptionListGroup>
-                            <DescriptionListTerm>Version</DescriptionListTerm>
-                            <DescriptionListDescription>{preview.version || "Unknown"}</DescriptionListDescription>
+                            <DescriptionListTerm>{_("Version")}</DescriptionListTerm>
+                            <DescriptionListDescription>{preview.version || _("Unknown")}</DescriptionListDescription>
                         </DescriptionListGroup>
                         {preview.rhelVersion && (
                             <DescriptionListGroup>
-                                <DescriptionListTerm>RHEL version</DescriptionListTerm>
+                                <DescriptionListTerm>{_("RHEL version")}</DescriptionListTerm>
                                 <DescriptionListDescription>{preview.rhelVersion}</DescriptionListDescription>
                             </DescriptionListGroup>
                         )}
                         <DescriptionListGroup>
-                            <DescriptionListTerm>Digest</DescriptionListTerm>
+                            <DescriptionListTerm>{_("Digest")}</DescriptionListTerm>
                             <DescriptionListDescription>
                                 <code>{preview.digest}</code>
                             </DescriptionListDescription>
                         </DescriptionListGroup>
                         <DescriptionListGroup>
-                            <DescriptionListTerm>Created</DescriptionListTerm>
+                            <DescriptionListTerm>{_("Created")}</DescriptionListTerm>
                             <DescriptionListDescription>
-                                {preview.created ? new Date(preview.created).toLocaleString() : "Unknown"}
+                                {preview.created ? new Date(preview.created).toLocaleString() : _("Unknown")}
                             </DescriptionListDescription>
                         </DescriptionListGroup>
                         <DescriptionListGroup>
-                            <DescriptionListTerm>Architecture</DescriptionListTerm>
-                            <DescriptionListDescription>{preview.architecture || "Unknown"}</DescriptionListDescription>
+                            <DescriptionListTerm>{_("Architecture")}</DescriptionListTerm>
+                            <DescriptionListDescription>{preview.architecture || _("Unknown")}</DescriptionListDescription>
                         </DescriptionListGroup>
                         {preview.alsoTagged?.length > 0 && (
                             <DescriptionListGroup>
-                                <DescriptionListTerm>Also tagged</DescriptionListTerm>
+                                <DescriptionListTerm>{_("Also tagged")}</DescriptionListTerm>
                                 <DescriptionListDescription>{preview.alsoTagged.join(", ")}</DescriptionListDescription>
                             </DescriptionListGroup>
                         )}
                         {preview.source && (
                             <DescriptionListGroup>
-                                <DescriptionListTerm>Base image source</DescriptionListTerm>
+                                <DescriptionListTerm>{_("Base image source")}</DescriptionListTerm>
                                 <DescriptionListDescription>
                                     {isSafeUrl(preview.source)
                                         ? <a href={preview.source} target="_blank" rel="noopener noreferrer">{preview.source}</a>

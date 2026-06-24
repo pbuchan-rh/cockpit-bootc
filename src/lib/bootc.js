@@ -1,5 +1,7 @@
 import cockpit from 'cockpit';
 
+const _ = cockpit.gettext;
+
 /**
  * /run/ostree-booted already exists on every bootc-booted system (it's the
  * marker file bootc's own bootc-fetch-apply-updates.service checks via
@@ -22,7 +24,7 @@ function withLock(argv) {
 function asFriendlyError(ex, streamedText = "") {
     const text = (ex && ex.message) || streamedText;
     if (ex && ex.exit_status === 1 && /failed to get lock/.test(text)) {
-        return new Error("Another bootc operation is already in progress. Try again in a moment.");
+        return new Error(_("Another bootc operation is already in progress. Try again in a moment."));
     }
     return ex;
 }

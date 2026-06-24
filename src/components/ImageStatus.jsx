@@ -1,3 +1,4 @@
+import cockpit from 'cockpit';
 import React from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
@@ -8,13 +9,15 @@ import { Gallery } from "@patternfly/react-core/dist/esm/layouts/Gallery/index.j
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 
+const _ = cockpit.gettext;
+
 // Extract the display fields from a bootc image slot (booted, staged, rollback)
 function parseImageSlot(slot) {
     if (!slot) return null;
     const img = slot.image ?? {};
     const ref = img.image ?? {};
     return {
-        reference: ref.image ?? "Unknown",
+        reference: ref.image ?? _("Unknown"),
         transport: ref.transport ?? "registry",
         version: img.version ?? null,
         digest: img.imageDigest ?? null,
@@ -41,20 +44,20 @@ function ImageInfo({ data, showRebootType }) {
     return (
         <DescriptionList isCompact isHorizontal>
             <DescriptionListGroup>
-                <DescriptionListTerm>Image</DescriptionListTerm>
+                <DescriptionListTerm>{_("Image")}</DescriptionListTerm>
                 <DescriptionListDescription>
                     <code>{data.reference}</code>
                 </DescriptionListDescription>
             </DescriptionListGroup>
             {data.version && (
                 <DescriptionListGroup>
-                    <DescriptionListTerm>Version</DescriptionListTerm>
+                    <DescriptionListTerm>{_("Version")}</DescriptionListTerm>
                     <DescriptionListDescription>{data.version}</DescriptionListDescription>
                 </DescriptionListGroup>
             )}
             {data.digest && (
                 <DescriptionListGroup>
-                    <DescriptionListTerm>Digest</DescriptionListTerm>
+                    <DescriptionListTerm>{_("Digest")}</DescriptionListTerm>
                     <DescriptionListDescription>
                         <code title={data.digest}>{formatDigest(data.digest)}</code>
                     </DescriptionListDescription>
@@ -62,15 +65,15 @@ function ImageInfo({ data, showRebootType }) {
             )}
             {data.timestamp && (
                 <DescriptionListGroup>
-                    <DescriptionListTerm>Built</DescriptionListTerm>
+                    <DescriptionListTerm>{_("Built")}</DescriptionListTerm>
                     <DescriptionListDescription>{formatTimestamp(data.timestamp)}</DescriptionListDescription>
                 </DescriptionListGroup>
             )}
             {showRebootType && data.softRebootCapable !== null && (
                 <DescriptionListGroup>
-                    <DescriptionListTerm>Reboot type</DescriptionListTerm>
+                    <DescriptionListTerm>{_("Reboot type")}</DescriptionListTerm>
                     <DescriptionListDescription>
-                        {data.softRebootCapable ? "Soft reboot" : "Full reboot"}
+                        {data.softRebootCapable ? _("Soft reboot") : _("Full reboot")}
                     </DescriptionListDescription>
                 </DescriptionListGroup>
             )}
@@ -116,7 +119,7 @@ export const ImageStatus = ({
         return (
             <EmptyState>
                 <EmptyStateBody>
-                    This system is not booted from a bootc image.
+                    {_("This system is not booted from a bootc image.")}
                 </EmptyStateBody>
             </EmptyState>
         );
@@ -128,12 +131,12 @@ export const ImageStatus = ({
             {/* Booted image */}
             <Card isFullHeight>
                 <CardTitle>
-                    <Label color="green">Booted</Label>
+                    <Label color="green">{_("Booted")}</Label>
                     {bootedData.incompatible && (
-                        <Label color="orange" style={{ marginLeft: '0.5rem' }}>Incompatible layers</Label>
+                        <Label color="orange" style={{ marginLeft: '0.5rem' }}>{_("Incompatible layers")}</Label>
                     )}
                     {bootedData.pinned && (
-                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>Pinned</Label>
+                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>{_("Pinned")}</Label>
                     )}
                 </CardTitle>
                 <CardBody>
@@ -146,7 +149,7 @@ export const ImageStatus = ({
                         isDisabled={disabled || pinningSlot === 'booted'}
                         isLoading={pinningSlot === 'booted'}
                     >
-                        {bootedData.pinned ? "Unpin" : "Pin"}
+                        {bootedData.pinned ? _("Unpin") : _("Pin")}
                     </Button>
                 </CardFooter>
             </Card>
@@ -154,14 +157,14 @@ export const ImageStatus = ({
             {/* Staged update */}
             <Card isFullHeight>
                 <CardTitle>
-                    <Label color="blue">Staged Update</Label>
+                    <Label color="blue">{_("Staged Update")}</Label>
                 </CardTitle>
                 <CardBody className={!stagedData ? "ct-card-body-centered" : undefined}>
                     {stagedData
                         ? <ImageInfo data={stagedData} showRebootType />
                         : (
                             <EmptyState variant="xs">
-                                <EmptyStateBody>No update staged</EmptyStateBody>
+                                <EmptyStateBody>{_("No update staged")}</EmptyStateBody>
                             </EmptyState>
                         )
                     }
@@ -175,7 +178,7 @@ export const ImageStatus = ({
                                     onClick={onConfirmUpdate}
                                     isDisabled={disabled || isBusy}
                                 >
-                                    {isRebooting ? <Spinner size="sm" /> : "Apply & Reboot"}
+                                    {isRebooting ? <Spinner size="sm" /> : _("Apply & Reboot")}
                                 </Button>
                             </FlexItem>
                             {stagedData && (
@@ -185,7 +188,7 @@ export const ImageStatus = ({
                                         onClick={onCancelStagedUpdate}
                                         isDisabled={disabled || isBusy}
                                     >
-                                        Cancel
+                                        {_("Cancel")}
                                     </Button>
                                 </FlexItem>
                             )}
@@ -197,23 +200,23 @@ export const ImageStatus = ({
             {/* Rollback image */}
             <Card isFullHeight>
                 <CardTitle>
-                    <Label color="red">Rollback</Label>
+                    <Label color="red">{_("Rollback")}</Label>
                     {rollbackData?.pinned && !rollbackAmbiguous && (
-                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>Pinned</Label>
+                        <Label color="purple" style={{ marginLeft: '0.5rem' }}>{_("Pinned")}</Label>
                     )}
                 </CardTitle>
                 <CardBody className={!rollbackData || rollbackAmbiguous ? "ct-card-body-centered" : undefined}>
                     {rollbackAmbiguous
                         ? (
                             <EmptyState variant="xs">
-                                <EmptyStateBody>Not yet determined — available after rebooting into the staged update</EmptyStateBody>
+                                <EmptyStateBody>{_("Not yet determined — available after rebooting into the staged update")}</EmptyStateBody>
                             </EmptyState>
                         )
                         : rollbackData
                             ? <ImageInfo data={rollbackData} />
                             : (
                                 <EmptyState variant="xs">
-                                    <EmptyStateBody>No rollback available</EmptyStateBody>
+                                    <EmptyStateBody>{_("No rollback available")}</EmptyStateBody>
                                 </EmptyState>
                             )
                     }
@@ -228,7 +231,7 @@ export const ImageStatus = ({
                                         onClick={onRollback}
                                         isDisabled={disabled || isBusy}
                                     >
-                                        Roll Back
+                                        {_("Roll Back")}
                                     </Button>
                                 </FlexItem>
                             )}
@@ -240,7 +243,7 @@ export const ImageStatus = ({
                                             onClick={onConfirmReboot}
                                             isDisabled={disabled || isRebooting}
                                         >
-                                            {isRebooting ? <Spinner size="sm" /> : "Reboot to Roll Back"}
+                                            {isRebooting ? <Spinner size="sm" /> : _("Reboot to Roll Back")}
                                         </Button>
                                     </FlexItem>
                                     <FlexItem>
@@ -249,7 +252,7 @@ export const ImageStatus = ({
                                             onClick={onCancelRollback}
                                             isDisabled={disabled || isRebooting}
                                         >
-                                            Cancel
+                                            {_("Cancel")}
                                         </Button>
                                     </FlexItem>
                                 </>
@@ -261,7 +264,7 @@ export const ImageStatus = ({
                                     isDisabled={disabled || pinningSlot === 'rollback'}
                                     isLoading={pinningSlot === 'rollback'}
                                 >
-                                    {rollbackData.pinned ? "Unpin" : "Pin"}
+                                    {rollbackData.pinned ? _("Unpin") : _("Pin")}
                                 </Button>
                             </FlexItem>
                         </Flex>

@@ -38,15 +38,17 @@ import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
 import { DeploymentList } from './components/DeploymentList.jsx';
 
+const _ = cockpit.gettext;
+
 // "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so the badge
 // tooltip stays roughly fresh without needing a re-render trigger elsewhere.
 function formatAgo(date, now) {
     const seconds = Math.floor((now - date.getTime()) / 1000);
-    if (seconds < 60) return "just now";
+    if (seconds < 60) return _("just now");
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return cockpit.format(_("$0m ago"), minutes);
     const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
+    return cockpit.format(_("$0h ago"), hours);
 }
 
 // Phases of the update/rollback lifecycle
@@ -297,16 +299,14 @@ export const App = () => {
     // mode docs ("If you perform a rollback, the system will automatically update again
     // unless you turn off auto-updates").
     const autoUpdateWillUndoRollback = autoUpdateStatus === 'active' && (
-        <> Automatic updates are currently <strong>enabled</strong> — the update timer has no way to
-            know this was a deliberate rollback, so it will likely re-check, re-stage, and re-apply this
-            same image again on its next scheduled run unless you turn off automatic updates first.</>
+        <> {_("Automatic updates are currently")} <strong>{_("enabled")}</strong> {_("— the update timer has no way to know this was a deliberate rollback, so it will likely re-check, re-stage, and re-apply this same image again on its next scheduled run unless you turn off automatic updates first.")}</>
     );
 
     if (loading) {
         return (
             <Page className="pf-m-no-sidebar">
                 <PageSection>
-                    <Skeleton width="75%" screenreaderText="Loading image status" />
+                    <Skeleton width="75%" screenreaderText={_("Loading image status")} />
                     <br />
                     <Skeleton width="50%" />
                 </PageSection>
@@ -331,7 +331,7 @@ export const App = () => {
                 {error && !(!status && !adminAllowed) && (
                     <Alert
                         variant="danger"
-                        title="Error"
+                        title={_("Error")}
                         isInline
                         actionClose={<Button variant="plain" onClick={() => setError(null)}>×</Button>}
                     >
@@ -340,29 +340,27 @@ export const App = () => {
                 )}
 
                 {!status && !adminAllowed && (
-                    <Alert variant="info" title="Administrative access required" isInline>
-                        bootc requires root to query image status. Unlock "Administrative access" above to view and manage updates.
+                    <Alert variant="info" title={_("Administrative access required")} isInline>
+                        {_('bootc requires root to query image status. Unlock "Administrative access" above to view and manage updates.')}
                     </Alert>
                 )}
-
 
                 {status?.usrOverlay && !overlayWarningDismissed && (
                     <Alert
                         variant="warning"
-                        title="/usr has a transient overlay mounted"
+                        title={_("/usr has a transient overlay mounted")}
                         isInline
                         actionClose={<Button variant="plain" onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
                         actionLinks={
                             <AlertActionLink onClick={() => setRebootModal('overlay')}>
-                                Reboot to Clear
+                                {_("Reboot to Clear")}
                             </AlertActionLink>
                         }
                     >
-                        This system no longer matches its source image exactly — a writable overlay
-                        ({status.usrOverlay.accessMode}, {status.usrOverlay.persistence}) is active on{' '}
-                        <code>/usr</code>, likely from <code>bootc usr-overlay</code>. It will be
-                        discarded on next reboot, but until then the running system has drifted from
-                        what's documented here.
+                        {_("This system no longer matches its source image exactly — a writable overlay")}
+                        {' '}({status.usrOverlay.accessMode}, {status.usrOverlay.persistence}){' '}
+                        {_("is active on")} <code>/usr</code>, {_("likely from")} <code>bootc usr-overlay</code>.
+                        {' '}{_("It will be discarded on next reboot, but until then the running system has drifted from what's documented here.")}
                     </Alert>
                 )}
 
@@ -398,13 +396,13 @@ export const App = () => {
                             <CardTitle>
                                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
                                     <FlexItem>
-                                        <Title headingLevel="h2" size="lg">Container image reference</Title>
+                                        <Title headingLevel="h2" size="lg">{_("Container image reference")}</Title>
                                     </FlexItem>
                                     {updateAvailable !== null && (
                                         <FlexItem>
-                                            <Tooltip content={`Checked ${formatAgo(lastChecked, now)}`}>
+                                            <Tooltip content={cockpit.format(_("Checked $0"), formatAgo(lastChecked, now))}>
                                                 <Label isCompact color={updateAvailable ? 'blue' : 'green'}>
-                                                    {updateAvailable ? 'Update available' : 'Up to date'}
+                                                    {updateAvailable ? _("Update available") : _("Up to date")}
                                                 </Label>
                                             </Tooltip>
                                         </FlexItem>
@@ -488,19 +486,17 @@ export const App = () => {
             >
                 <ModalHeader
                     title={
-                        rebootModal === 'update' ? "Apply update and reboot?"
-                            : rebootModal === 'overlay' ? "Reboot to clear /usr overlay?"
-                                : "Reboot to roll back?"
+                        rebootModal === 'update' ? _("Apply update and reboot?")
+                            : rebootModal === 'overlay' ? _("Reboot to clear /usr overlay?")
+                                : _("Reboot to roll back?")
                     }
                 />
                 <ModalBody>
                     {rebootModal === 'update'
-                        ? "The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed."
+                        ? _("The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed.")
                         : rebootModal === 'overlay'
-                            ? "The system will reboot, discarding the transient /usr overlay and any changes made through it."
-                            : <>The system will reboot into the previous image. <strong>This also reverts /etc to that image's
-                                frozen snapshot</strong> — any configuration changes made since then will be lost, not merged or
-                                preserved.{autoUpdateWillUndoRollback}</>
+                            ? _("The system will reboot, discarding the transient /usr overlay and any changes made through it.")
+                            : <>{_("The system will reboot into the previous image.")} <strong>{_("This also reverts /etc to that image's frozen snapshot")}</strong> {_("— any configuration changes made since then will be lost, not merged or preserved.")}{autoUpdateWillUndoRollback}</>
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -509,10 +505,10 @@ export const App = () => {
                         onClick={rebootModal === 'update' ? handleApplyUpdate : handleReboot}
                         isDisabled={!adminAllowed}
                     >
-                        {phase === PHASE.REBOOTING ? "Rebooting…" : "Reboot"}
+                        {phase === PHASE.REBOOTING ? _("Rebooting…") : _("Reboot")}
                     </Button>
                     <Button variant="secondary" onClick={() => setRebootModal(null)}>
-                        Cancel
+                        {_("Cancel")}
                     </Button>
                 </ModalFooter>
             </Modal>
@@ -524,22 +520,22 @@ export const App = () => {
             >
                 <ModalHeader
                     title={
-                        confirmAction?.action === 'switch' ? "Switch image?"
-                            : confirmAction?.action === 'autoupdate-enable' ? "Enable automatic updates?"
-                                : confirmAction?.action === 'cancel-staged' ? "Discard staged update?"
-                                    : "Stage rollback?"
+                        confirmAction?.action === 'switch' ? _("Switch image?")
+                            : confirmAction?.action === 'autoupdate-enable' ? _("Enable automatic updates?")
+                                : confirmAction?.action === 'cancel-staged' ? _("Discard staged update?")
+                                    : _("Stage rollback?")
                     }
                 />
                 <ModalBody>
                     {confirmAction?.action === 'switch'
-                        ? <>The system will be reconfigured to track <code>{confirmAction.ref}</code> and the image will be staged for next boot. Nothing is applied until you reboot.</>
+                        ? <>{_("The system will be reconfigured to track")} <code>{confirmAction.ref}</code> {_("and the image will be staged for next boot. Nothing is applied until you reboot.")}</>
                         : confirmAction?.action === 'autoupdate-enable'
-                            ? "This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot."
+                            ? _("This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot.")
                             : confirmAction?.action === 'cancel-staged'
-                                ? "The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back."
+                                ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
                                 : status?.staged
-                                    ? <>The previous image will be staged for next boot. This will also <strong>discard the currently staged update</strong> ({status.staged.image?.version || "unknown version"}). Rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.{autoUpdateWillUndoRollback}</>
-                                    : <>The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts <code>/etc</code> to that image's frozen snapshot — any configuration changes made since then will be lost.{autoUpdateWillUndoRollback}</>
+                                    ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
+                                    : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -553,13 +549,13 @@ export const App = () => {
                         }}
                         isDisabled={!adminAllowed}
                     >
-                        {confirmAction?.action === 'switch' ? "Switch"
-                            : confirmAction?.action === 'autoupdate-enable' ? "Enable"
-                                : confirmAction?.action === 'cancel-staged' ? "Discard"
-                                    : "Stage Rollback"}
+                        {confirmAction?.action === 'switch' ? _("Switch")
+                            : confirmAction?.action === 'autoupdate-enable' ? _("Enable")
+                                : confirmAction?.action === 'cancel-staged' ? _("Discard")
+                                    : _("Stage Rollback")}
                     </Button>
                     <Button variant="secondary" onClick={() => setConfirmAction(null)}>
-                        Cancel
+                        {_("Cancel")}
                     </Button>
                 </ModalFooter>
             </Modal>

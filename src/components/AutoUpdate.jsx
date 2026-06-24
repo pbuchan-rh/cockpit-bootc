@@ -1,15 +1,18 @@
+import cockpit from 'cockpit';
 import React, { useState, useEffect } from 'react';
 import { Switch } from "@patternfly/react-core/dist/esm/components/Switch/index.js";
+
+const _ = cockpit.gettext;
 
 // "in 18m" / "in 2h 5m" — recomputed on a slow tick so it counts down without
 // needing any state outside this component.
 function formatCountdown(nextRunMs, now) {
     const seconds = Math.max(0, Math.floor((nextRunMs - now) / 1000));
-    if (seconds < 60) return "due any moment";
+    if (seconds < 60) return _("due any moment");
     const minutes = Math.floor(seconds / 60) % 60;
     const hours = Math.floor(seconds / 3600);
-    if (hours === 0) return `in ${minutes}m`;
-    return `in ${hours}h ${minutes}m`;
+    if (hours === 0) return cockpit.format(_("in $0m"), minutes);
+    return cockpit.format(_("in $0h $1m"), hours, minutes);
 }
 
 export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
@@ -27,8 +30,8 @@ export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
             id="bootc-auto-update-switch"
             label={
                 isChecked && nextRun
-                    ? `Automatic updates (next check ${formatCountdown(nextRun, now)})`
-                    : "Automatic updates"
+                    ? cockpit.format(_("Automatic updates (next check $0)"), formatCountdown(nextRun, now))
+                    : _("Automatic updates")
             }
             isChecked={isChecked}
             isDisabled={disabled || status === 'unknown'}

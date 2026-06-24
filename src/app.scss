@@ -77,10 +77,13 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-.ct-pinned-count {
-    display: inline-block;
-    color: var(--pf-t--global--text--color--subtle);
+.ct-orphaned-pin-warning {
     margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-disk-usage-total {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
 }
 
 // Split the header into two equal-width halves and center each block as a

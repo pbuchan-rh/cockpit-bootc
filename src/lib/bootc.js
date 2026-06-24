@@ -40,22 +40,41 @@ export async function getStatus() {
 }
 
 /**
- * Count pinned deployments across the *entire* ostree deployment list, not
- * just the 3 slots `bootc status` reports (booted/staged/rollback). A
- * deployment pinned today can rotate out of all 3 of those after enough
- * later upgrades while still sitting on disk, pinned, invisible to
- * `bootc status` — this is the only way to see it's still there.
+ * List every deployment ostree knows about, not just the 3 slots `bootc
+ * status` reports (booted/staged/rollback). A deployment pinned today can
+ * rotate out of all 3 of those after enough later upgrades while still
+ * sitting on disk, pinned, invisible to `bootc status` — this is the only
+ * way to see it's still there. `slot` is null for anything not currently in
+ * one of bootc's 3 reported slots.
  */
-export async function getPinnedDeploymentCount() {
+export async function getDeploymentList() {
     const output = await cockpit.spawn(
         ["ostree", "admin", "status", "--json"],
         { superuser: "require", err: "message" }
     );
     const { deployments } = JSON.parse(output);
-    return {
-        pinned: deployments.filter(d => d.pinned).length,
-        total: deployments.length,
-    };
+    return deployments.map(d => ({
+        index: d.index,
+        checksum: d.checksum,
+        serial: d.serial,
+        pinned: d.pinned,
+        slot: d.booted ? "booted" : d.rollback ? "rollback" : (d.staged || d.pending) ? "staged" : null,
+    }));
+}
+
+/**
+ * Real disk usage of the ostree object store. Deployments share most of
+ * their files with each other via hardlinks into this same repo, so summing
+ * a `du` per-deployment would double-count shared blocks and overstate what
+ * unpinning any single one would actually free — this single total is the
+ * only honest number to show.
+ */
+export async function getRepoDiskUsage() {
+    const output = await cockpit.spawn(
+        ["du", "-sh", "/ostree/repo"],
+        { superuser: "require", err: "message" }
+    );
+    return output.split(/\s+/)[0];
 }
 
 /**
@@ -142,10 +161,19 @@ const OSTREE_PIN_INDEX = { booted: "booted", rollback: "rollback" };
  * `bootc edit` (which only touches the `spec` section).
  */
 export async function setDeploymentPinned(slot, pinned) {
-    const index = OSTREE_PIN_INDEX[slot];
+    return setDeploymentPinnedByIndex(OSTREE_PIN_INDEX[slot], pinned);
+}
+
+/**
+ * Same as setDeploymentPinned(), but addresses a deployment by its raw
+ * ostree index (0, 1, 2...) instead of a bootc slot name — needed for
+ * deployments that have rotated out of bootc's 3 reported slots, which only
+ * getDeploymentList() can see.
+ */
+export async function setDeploymentPinnedByIndex(index, pinned) {
     const args = ["ostree", "admin", "pin"];
     if (!pinned) args.push("--unpin");
-    args.push(index);
+    args.push(String(index));
     try {
         return await cockpit.spawn(args, { superuser: "require", err: "message" });
     } catch (ex) {

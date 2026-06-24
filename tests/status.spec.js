@@ -9,9 +9,9 @@ test.describe('status', () => {
     test('module loads with Booted/Staged/Rollback cards', async ({ page }) => {
         await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });
 
-        await expect(page.locator('text=Booted')).toBeVisible();
+        await expect(page.locator('.pf-v6-c-label:has-text("Booted")')).toBeVisible();
         await expect(page.locator('text=Staged Update')).toBeVisible();
-        await expect(page.locator('text=Rollback')).toBeVisible();
+        await expect(page.locator('.pf-v6-c-label:has-text("Rollback")')).toBeVisible();
     });
 
     test('Booted card shows real image/version/digest fields, not placeholders', async ({ page }) => {

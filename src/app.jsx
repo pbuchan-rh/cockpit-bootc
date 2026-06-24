@@ -26,7 +26,9 @@ import {
     switchImage,
     inspectImage,
     setDeploymentPinned,
-    getPinnedDeploymentCount,
+    setDeploymentPinnedByIndex,
+    getDeploymentList,
+    getRepoDiskUsage,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -34,6 +36,7 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
+import { OrphanedPinWarning } from './components/OrphanedPinWarning.jsx';
 
 // "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so the badge
 // tooltip stays roughly fresh without needing a re-render trigger elsewhere.
@@ -68,7 +71,9 @@ export const App = () => {
     const [updateAvailable, setUpdateAvailable] = useState(null);
     const [switching, setSwitching] = useState(false);
     const [pinningSlot, setPinningSlot] = useState(null); // 'booted' | 'staged' | 'rollback' | null
-    const [pinnedCount, setPinnedCount] = useState(null); // { pinned, total } across the full ostree deployment list
+    const [deployments, setDeployments] = useState([]); // full ostree deployment list, not just bootc's 3 reported slots
+    const [pinningIndex, setPinningIndex] = useState(null); // raw ostree index currently being unpinned from OrphanedPinWarning
+    const [diskUsage, setDiskUsage] = useState(null); // real total disk used by /ostree/repo
     const [previewing, setPreviewing] = useState(false);
     const [preview, setPreview] = useState(null);
     const [previewError, setPreviewError] = useState(null);
@@ -109,7 +114,8 @@ export const App = () => {
         // failure on getStatus() below doesn't block it too.
         getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
         getNextAutoUpdateRun().then(setNextAutoUpdateRun).catch(() => {});
-        getPinnedDeploymentCount().then(setPinnedCount).catch(() => {});
+        getDeploymentList().then(setDeployments).catch(() => {});
+        getRepoDiskUsage().then(setDiskUsage).catch(() => {});
 
         try {
             const s = await getStatus();
@@ -196,6 +202,19 @@ export const App = () => {
             setError(ex.message);
         } finally {
             setPinningSlot(null);
+        }
+    }
+
+    async function handleTogglePinByIndex(index, currentlyPinned) {
+        setError(null);
+        setPinningIndex(index);
+        try {
+            await setDeploymentPinnedByIndex(index, !currentlyPinned);
+            await loadStatus();
+        } catch (ex) {
+            setError(ex.message);
+        } finally {
+            setPinningIndex(null);
         }
     }
 
@@ -441,12 +460,15 @@ export const App = () => {
                     />
                 )}
 
-                {pinnedCount && pinnedCount.pinned > 0 && (
-                    <Tooltip content="Pinned deployments stay on disk indefinitely, even after rolling off the cards above. Run `ostree admin status` to see all of them (numbered 0, 1, 2... top to bottom), then `ostree admin pin -u <that number>` to unpin.">
-                        <p className="ct-pinned-count">
-                            {pinnedCount.pinned} of {pinnedCount.total} deployments pinned
-                        </p>
-                    </Tooltip>
+                <OrphanedPinWarning
+                    deployments={deployments}
+                    pinningIndex={pinningIndex}
+                    onUnpin={handleTogglePinByIndex}
+                    disabled={!adminAllowed}
+                />
+
+                {diskUsage && (
+                    <p className="ct-disk-usage-total">Total disk used by image store: {diskUsage}</p>
                 )}
             </PageSection>
 

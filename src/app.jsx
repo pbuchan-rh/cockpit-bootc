@@ -36,7 +36,7 @@ import { ProgressLog } from './components/ProgressLog.jsx';
 import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
-import { OrphanedPinList } from './components/OrphanedPinList.jsx';
+import { DeploymentList } from './components/DeploymentList.jsx';
 
 // "just now" / "Xm ago" / "Xh ago" — recomputed on a slow tick so the badge
 // tooltip stays roughly fresh without needing a re-render trigger elsewhere.
@@ -314,6 +314,17 @@ export const App = () => {
         );
     }
 
+    // bootc's 3 reported slots are the only place a deployment's human-readable
+    // version is available — ostree's own deployment list (used for the full
+    // table below) only has checksums. Cross-reference by checksum so rows
+    // still in a known slot show their real version instead of just a hash.
+    const versionByChecksum = {};
+    for (const slot of [status?.booted, status?.staged, status?.rollback]) {
+        if (slot?.ostree?.checksum && slot?.image?.version) {
+            versionByChecksum[slot.ostree.checksum] = slot.image.version;
+        }
+    }
+
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
@@ -460,16 +471,14 @@ export const App = () => {
                     />
                 )}
 
-                <OrphanedPinList
+                <DeploymentList
                     deployments={deployments}
+                    versionByChecksum={versionByChecksum}
+                    diskUsage={diskUsage}
                     pinningIndex={pinningIndex}
-                    onUnpin={handleTogglePinByIndex}
+                    onTogglePin={handleTogglePinByIndex}
                     disabled={!adminAllowed}
                 />
-
-                {diskUsage && (
-                    <p className="ct-disk-usage-total">Total disk used by image store: {diskUsage}</p>
-                )}
             </PageSection>
 
             <Modal

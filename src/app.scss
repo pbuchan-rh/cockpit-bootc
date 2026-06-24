@@ -77,13 +77,8 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-.ct-orphaned-pin-list {
-    margin-block-start: var(--pf-t--global--spacer--md);
-}
-
-.ct-orphaned-pin-heading {
-    color: var(--pf-t--global--text--color--subtle);
-    margin-block-end: var(--pf-t--global--spacer--sm);
+.ct-deployment-list {
+    margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 .ct-disk-usage-total {

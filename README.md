@@ -20,6 +20,12 @@ rollbacks.
 - Toggle the `bootc-fetch-apply-updates.timer` for automatic updates (with a
   confirmation, since enabling it means unattended fetch+apply+reboot on a
   recurring schedule, not just a periodic check)
+- Pin or unpin the booted/rollback deployment to protect it from `bootc`'s
+  automatic garbage collection
+- An expandable view of every deployment ostree knows about, not just the 3
+  slots `bootc status` reports — a pinned deployment can rotate out of all 3
+  while still sitting on disk, and this is the only way to see and unpin it —
+  plus the combined disk usage of the image store
 - A drift warning if `/usr` has a transient `bootc usr-overlay` mounted
 - Every mutating action is gated behind Cockpit's admin-access permission
 
@@ -31,9 +37,12 @@ between sessions.
 ## Requirements
 
 - [Cockpit](https://cockpit-project.org/)
-- [bootc](https://github.com/containers/bootc) (`/usr/bin/bootc`)
+- [bootc](https://bootc-dev.github.io/bootc/) (`/usr/bin/bootc`)
 - [skopeo](https://github.com/containers/skopeo) (`/usr/bin/skopeo`) — used for
   update checks and switch-target previews
+- [ostree](https://ostreedev.github.io/ostree/) (`/usr/bin/ostree`) — used
+  directly for pinning and listing deployments, since `bootc` itself has no
+  pin/unpin command (ships with every real bootc base image; see `DESIGN.md`)
 
 ## Building
 
@@ -44,7 +53,12 @@ npm install
 
 See `DESIGN.md` for architecture rationale, `GOTCHAS.md` for non-obvious bootc/
 PatternFly/Cockpit lessons learned, `TESTING.md` for manual verification notes, and
-`Makefile` for RPM packaging.
+`Makefile` for RPM packaging. Real automated tests (Playwright, against a live
+bootc host) live under `tests/`.
+
+Translation infrastructure (`cockpit.gettext`/`po/*.pot` extraction) is wired up
+the same way as other Cockpit modules, but `po/` deliberately has no real
+`<lang>.po` files yet — those come from translator contributions, not this repo.
 
 ## License
 

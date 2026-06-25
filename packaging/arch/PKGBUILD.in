@@ -1,15 +1,15 @@
-pkgname=cockpit-starter-kit
+pkgname=cockpit-bootc
 pkgver=VERSION
 pkgrel=1
-pkgdesc='Cockpit Starter Kit Example Module'
+pkgdesc='Cockpit UI for bootc image updates and rollbacks'
 arch=('x86_64')
-url='https://github.com/cockpit-project/starter-kit'
-license=(LGPL)
+url='http://git.beastmode.localdomain:3000/admin/cockpit-bootc'
+license=('LGPL-2.1-or-later')
 source=("SOURCE")
 sha256sums=('SKIP')
 
 package() {
-  depends=(cockpit)
+  depends=(cockpit bootc skopeo)
   cd $pkgname
   make DESTDIR="$pkgdir" install PREFIX=/usr
 }

@@ -27,6 +27,7 @@ import {
     inspectImage,
     setDeploymentPinned,
     setDeploymentPinnedByIndex,
+    deleteDeployment,
     getDeploymentList,
     getRepoDiskUsage,
 } from './lib/bootc.js';
@@ -75,6 +76,7 @@ export const App = () => {
     const [pinningSlot, setPinningSlot] = useState(null); // 'booted' | 'staged' | 'rollback' | null
     const [deployments, setDeployments] = useState([]); // full ostree deployment list, not just bootc's 3 reported slots
     const [pinningIndex, setPinningIndex] = useState(null); // raw ostree index currently being unpinned from OrphanedPinWarning
+    const [deletingIndex, setDeletingIndex] = useState(null); // raw ostree index currently being deleted
     const [diskUsage, setDiskUsage] = useState(null); // real total disk used by /ostree/repo
     const [previewing, setPreviewing] = useState(false);
     const [preview, setPreview] = useState(null);
@@ -88,6 +90,7 @@ export const App = () => {
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
     const [now, setNow] = useState(Date.now());
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
+    const loadStatusIdRef = useRef(0); // guards against an older loadStatus() call's response landing after a newer one
 
     useEffect(() => {
         if (!lastChecked) return;
@@ -112,23 +115,33 @@ export const App = () => {
         if (showLoadingSkeleton) setLoading(true);
         setError(null);
 
+        // Two different action buttons (e.g. Pin and Check for Updates) can
+        // each trigger their own loadStatus() without sharing a single "busy"
+        // flag — if an older call's response lands after a newer one, it
+        // would otherwise overwrite fresher state with stale data. Each call
+        // gets an id; any setState below is skipped once a newer call has
+        // started.
+        const requestId = ++loadStatusIdRef.current;
+        const isStale = () => requestId !== loadStatusIdRef.current;
+
         // Doesn't require root — load it independently so a permission
         // failure on getStatus() below doesn't block it too.
-        getAutoUpdateStatus().then(setAutoUpdateStatus).catch(() => {});
-        getNextAutoUpdateRun().then(setNextAutoUpdateRun).catch(() => {});
-        getDeploymentList().then(setDeployments).catch(() => {});
-        getRepoDiskUsage().then(setDiskUsage).catch(() => {});
+        getAutoUpdateStatus().then(v => { if (!isStale()) setAutoUpdateStatus(v); }).catch(() => {});
+        getNextAutoUpdateRun().then(v => { if (!isStale()) setNextAutoUpdateRun(v); }).catch(() => {});
+        getDeploymentList().then(v => { if (!isStale()) setDeployments(v); }).catch(() => {});
+        getRepoDiskUsage().then(v => { if (!isStale()) setDiskUsage(v); }).catch(() => {});
 
         try {
             const s = await getStatus();
+            if (isStale()) return s.status;
             setStatus(s.status);
             setTrackedRef(s.spec?.image?.image ?? null);
             return s.status;
         } catch (ex) {
-            setError(ex.message);
+            if (!isStale()) setError(ex.message);
             return null;
         } finally {
-            setLoading(false);
+            if (!isStale()) setLoading(false);
         }
     }, []);
 
@@ -207,16 +220,42 @@ export const App = () => {
         }
     }
 
-    async function handleTogglePinByIndex(index, currentlyPinned) {
+    async function handleTogglePinByIndex(index, currentlyPinned, expectedChecksum) {
         setError(null);
         setPinningIndex(index);
         try {
-            await setDeploymentPinnedByIndex(index, !currentlyPinned);
+            await setDeploymentPinnedByIndex(index, !currentlyPinned, expectedChecksum);
             await loadStatus();
         } catch (ex) {
             setError(ex.message);
         } finally {
             setPinningIndex(null);
+        }
+    }
+
+    // Closing the modal returns focus to whichever button opened it — left
+    // unblurred, a danger-variant button (e.g. Delete) keeps rendering its
+    // :focus style, a darker red than its resting state, which reads as
+    // "stuck" rather than "closed." The modal's own focus-restore-on-close
+    // logic re-focuses that button *after* this handler runs, so blurring
+    // immediately gets overridden — deferring to the next tick lets our blur
+    // win.
+    function closeConfirmModal() {
+        setConfirmAction(null);
+        setTimeout(() => document.activeElement?.blur(), 0);
+    }
+
+    async function handleDeleteDeployment(index, expectedChecksum) {
+        setConfirmAction(null);
+        setError(null);
+        setDeletingIndex(index);
+        try {
+            await deleteDeployment(index, expectedChecksum);
+            await loadStatus();
+        } catch (ex) {
+            setError(ex.message);
+        } finally {
+            setDeletingIndex(null);
         }
     }
 
@@ -314,12 +353,14 @@ export const App = () => {
         );
     }
 
-    // bootc's 3 reported slots are the only place a deployment's human-readable
-    // version is available — ostree's own deployment list (used for the full
-    // table below) only has checksums. Cross-reference by checksum so rows
-    // still in a known slot show their real version instead of just a hash.
+    // ostree's own deployment list (used for the full table below) only has
+    // checksums, not human-readable versions — cross-reference by checksum
+    // against everything bootc status knows a version for: the 3 named slots,
+    // plus otherDeployments, which covers exactly the off-slot rows this
+    // table exists to show (otherwise they'd fall back to a bare hash, the
+    // one case where a real version string is most needed).
     const versionByChecksum = {};
-    for (const slot of [status?.booted, status?.staged, status?.rollback]) {
+    for (const slot of [status?.booted, status?.staged, status?.rollback, ...(status?.otherDeployments || [])]) {
         if (slot?.ostree?.checksum && slot?.image?.version) {
             versionByChecksum[slot.ostree.checksum] = slot.image.version;
         }
@@ -475,6 +516,8 @@ export const App = () => {
                     diskUsage={diskUsage}
                     pinningIndex={pinningIndex}
                     onTogglePin={handleTogglePinByIndex}
+                    deletingIndex={deletingIndex}
+                    onDelete={(index, checksum) => setConfirmAction({ action: 'delete-deployment', index, checksum, version: versionByChecksum[checksum] })}
                     disabled={!adminAllowed}
                 />
             </PageSection>
@@ -515,7 +558,7 @@ export const App = () => {
 
             <Modal
                 isOpen={confirmAction !== null}
-                onClose={() => setConfirmAction(null)}
+                onClose={closeConfirmModal}
                 variant="small"
             >
                 <ModalHeader
@@ -523,7 +566,8 @@ export const App = () => {
                         confirmAction?.action === 'switch' ? _("Switch image?")
                             : confirmAction?.action === 'autoupdate-enable' ? _("Enable automatic updates?")
                                 : confirmAction?.action === 'cancel-staged' ? _("Discard staged update?")
-                                    : _("Stage rollback?")
+                                    : confirmAction?.action === 'delete-deployment' ? _("Delete deployment?")
+                                        : _("Stage rollback?")
                     }
                 />
                 <ModalBody>
@@ -533,18 +577,21 @@ export const App = () => {
                             ? _("This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot.")
                             : confirmAction?.action === 'cancel-staged'
                                 ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
-                                : status?.staged
-                                    ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
-                                    : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
+                                : confirmAction?.action === 'delete-deployment'
+                                    ? <>{_("This permanently deletes")} <strong>{confirmAction.version || _("this deployment")}</strong> {_("and frees its disk space immediately. This cannot be undone — if you need it again, it must be re-pulled from the registry.")}</>
+                                    : status?.staged
+                                        ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
+                                        : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
                     }
                 </ModalBody>
                 <ModalFooter>
                     <Button
-                        variant="primary"
+                        variant={confirmAction?.action === 'delete-deployment' ? 'danger' : 'primary'}
                         onClick={() => {
                             if (confirmAction?.action === 'switch') handleSwitchImage(confirmAction.ref);
                             else if (confirmAction?.action === 'autoupdate-enable') { setConfirmAction(null); handleAutoUpdateToggle(true); }
                             else if (confirmAction?.action === 'cancel-staged') handleCancelStagedUpdate();
+                            else if (confirmAction?.action === 'delete-deployment') handleDeleteDeployment(confirmAction.index, confirmAction.checksum);
                             else handleRollback();
                         }}
                         isDisabled={!adminAllowed}
@@ -552,9 +599,10 @@ export const App = () => {
                         {confirmAction?.action === 'switch' ? _("Switch")
                             : confirmAction?.action === 'autoupdate-enable' ? _("Enable")
                                 : confirmAction?.action === 'cancel-staged' ? _("Discard")
-                                    : _("Stage Rollback")}
+                                    : confirmAction?.action === 'delete-deployment' ? _("Delete")
+                                        : _("Stage Rollback")}
                     </Button>
-                    <Button variant="secondary" onClick={() => setConfirmAction(null)}>
+                    <Button variant="secondary" onClick={closeConfirmModal}>
                         {_("Cancel")}
                     </Button>
                 </ModalFooter>

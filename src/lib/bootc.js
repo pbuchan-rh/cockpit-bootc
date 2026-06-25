@@ -26,8 +26,46 @@ function asFriendlyError(ex, streamedText = "") {
     if (ex && ex.exit_status === 1 && /failed to get lock/.test(text)) {
         return new Error(_("Another bootc operation is already in progress. Try again in a moment."));
     }
+    if (ex && ex.problem === "timeout") {
+        return new Error(_("The operation timed out — the registry may be unreachable. Try again."));
+    }
     return ex;
 }
+
+// cockpit.spawn() has no built-in timeout — a registry that hangs (network
+// drop, auth stall) would otherwise leave the UI spinner stuck forever. Used
+// for one-shot, non-streamed calls (metadata lookups) where any progress at
+// all means it's done; see inactivityTimeout() below for the streamed
+// (long-running download) case, where a flat timeout would also kill a slow
+// but genuinely progressing transfer.
+function spawnWithTimeout(args, options, timeoutMs) {
+    const proc = cockpit.spawn(args, options);
+    const timer = setTimeout(() => proc.close("timeout"), timeoutMs);
+    proc.then(() => clearTimeout(timer), () => clearTimeout(timer));
+    return proc;
+}
+
+// For streamed downloads (stageUpdate/switchImage): kill the process only if
+// no output line arrives for `timeoutMs`, not after a flat total runtime —
+// large image pulls can legitimately take many minutes as long as they're
+// still producing progress lines.
+function inactivityTimeout(proc, timeoutMs) {
+    let timer = setTimeout(() => proc.close("timeout"), timeoutMs);
+    return {
+        reset: () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => proc.close("timeout"), timeoutMs);
+        },
+        clear: () => clearTimeout(timer),
+    };
+}
+
+const INSPECT_TIMEOUT_MS = 20000;
+const DOWNLOAD_INACTIVITY_TIMEOUT_MS = 120000;
+// Cap concurrent skopeo calls when cross-checking a repo's other tags — firing
+// all of them at once risks tripping a registry's rate limit (HTTP 429) on a
+// single image preview.
+const TAG_CHECK_CONCURRENCY = 5;
 
 /**
  * Get current bootc status.
@@ -103,16 +141,22 @@ export async function checkForUpdates(trackedRef, bootedDigest) {
  */
 export async function stageUpdate(onProgress) {
     let streamedText = "";
+    const proc = cockpit.spawn(
+        withLock(["bootc", "upgrade", "--download-only"]),
+        { superuser: "require", err: "out" }
+    );
+    const { reset, clear } = inactivityTimeout(proc, DOWNLOAD_INACTIVITY_TIMEOUT_MS);
+    proc.stream(line => {
+        reset();
+        streamedText += line;
+        if (onProgress) onProgress(line);
+    });
     try {
-        return await cockpit.spawn(
-            withLock(["bootc", "upgrade", "--download-only"]),
-            { superuser: "require", err: "out" }
-        ).stream(line => {
-            streamedText += line;
-            if (onProgress) onProgress(line);
-        });
+        return await proc;
     } catch (ex) {
         throw asFriendlyError(ex, streamedText);
+    } finally {
+        clear();
     }
 }
 
@@ -166,18 +210,54 @@ export async function setDeploymentPinned(slot, pinned) {
     return setDeploymentPinnedByIndex(OSTREE_PIN_INDEX[slot], pinned);
 }
 
+// Raw ostree indices can drift: a deployment staged in the background (the
+// auto-update timer, or another open tab) between when the UI fetched its
+// deployment list and when the user clicks an action button can shift every
+// later index down. Neither `ostree admin pin` nor `ostree admin undeploy`
+// accept a checksum target — only an index or (for pin) a named slot — so the
+// only way to catch drift is to verify it ourselves: re-fetch immediately
+// before mutating and confirm the index still points at the checksum the UI
+// showed.
+async function verifyIndexMatchesChecksum(index, expectedChecksum) {
+    const current = await getDeploymentList();
+    const found = current.find(d => String(d.index) === String(index));
+    if (!found || found.checksum !== expectedChecksum) {
+        throw new Error(_("System state changed — refresh and try again."));
+    }
+}
+
 /**
  * Same as setDeploymentPinned(), but addresses a deployment by its raw
  * ostree index (0, 1, 2...) instead of a bootc slot name — needed for
  * deployments that have rotated out of bootc's 3 reported slots, which only
- * getDeploymentList() can see.
+ * getDeploymentList() can see. expectedChecksum is optional so
+ * setDeploymentPinned() (which targets stable named slots, not raw indices,
+ * and so isn't subject to index drift) can skip the check.
  */
-export async function setDeploymentPinnedByIndex(index, pinned) {
+export async function setDeploymentPinnedByIndex(index, pinned, expectedChecksum) {
+    if (expectedChecksum) await verifyIndexMatchesChecksum(index, expectedChecksum);
     const args = ["ostree", "admin", "pin"];
     if (!pinned) args.push("--unpin");
     args.push(String(index));
     try {
         return await cockpit.spawn(args, { superuser: "require", err: "message" });
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
+}
+
+/**
+ * Permanently delete an off-slot deployment, freeing its disk objects now
+ * rather than waiting for the next upgrade/switch cycle's automatic GC (which
+ * only prunes unpinned deployments older than booted + 1 rollback). `ostree`
+ * itself refuses to delete the currently booted deployment, but does NOT
+ * check pin status — the UI is responsible for requiring unpin first, since
+ * pin exists specifically to signal "don't remove this."
+ */
+export async function deleteDeployment(index, expectedChecksum) {
+    await verifyIndexMatchesChecksum(index, expectedChecksum);
+    try {
+        return await cockpit.spawn(["ostree", "admin", "undeploy", String(index)], { superuser: "require", err: "message" });
     } catch (ex) {
         throw asFriendlyError(ex);
     }
@@ -270,9 +350,10 @@ export function setAutoUpdate(enabled) {
  * unlike bootc status, which only knows about already-fetched deployments.
  */
 export async function inspectImage(ref) {
-    const output = await cockpit.spawn(
+    const output = await spawnWithTimeout(
         ["skopeo", "inspect", `docker://${ref}`],
-        { err: "message" }
+        { err: "message" },
+        INSPECT_TIMEOUT_MS
     );
     const info = JSON.parse(output);
     const labels = info.Labels || {};
@@ -280,7 +361,7 @@ export async function inspectImage(ref) {
     // RepoTags is every tag in the repo, not the tags that resolve to this
     // digest — confirmed empirically (e.g. a real registry where most tags
     // pointed at entirely different builds, including one with known bugs).
-    // Resolve each tag's own digest in parallel and keep only real matches.
+    // Resolve each tag's own digest, keeping only real matches.
     const lastSlash = ref.lastIndexOf('/');
     const lastColon = ref.lastIndexOf(':');
     const repo = lastColon > lastSlash ? ref.slice(0, lastColon) : ref;
@@ -288,16 +369,24 @@ export async function inspectImage(ref) {
     // Cap how many other tags we cross-check — a repo with hundreds of CI
     // tags would otherwise mean hundreds of skopeo calls per single preview.
     const otherTags = (info.RepoTags || []).filter(tag => tag !== requestedTag).slice(0, 20);
-    const matches = await Promise.allSettled(otherTags.map(async tag => {
-        const tagOutput = await cockpit.spawn(
-            ["skopeo", "inspect", `docker://${repo}:${tag}`],
-            { err: "ignore" }
-        );
-        return { tag, digest: JSON.parse(tagOutput).Digest };
-    }));
-    const alsoTagged = matches
-            .filter(r => r.status === 'fulfilled' && r.value.digest === info.Digest)
-            .map(r => r.value.tag);
+    const alsoTagged = [];
+    // Batch instead of firing all of them at once — a burst of 20 concurrent
+    // registry calls for one image preview risks tripping rate limits (429).
+    for (let i = 0; i < otherTags.length; i += TAG_CHECK_CONCURRENCY) {
+        const chunk = otherTags.slice(i, i + TAG_CHECK_CONCURRENCY);
+        const results = await Promise.allSettled(chunk.map(async tag => {
+            const tagOutput = await spawnWithTimeout(
+                ["skopeo", "inspect", `docker://${repo}:${tag}`],
+                { err: "ignore" },
+                INSPECT_TIMEOUT_MS
+            );
+            return { tag, digest: JSON.parse(tagOutput).Digest };
+        }));
+        for (const r of results) {
+            if (r.status === 'fulfilled' && r.value.digest === info.Digest)
+                alsoTagged.push(r.value.tag);
+        }
+    }
 
     return {
         digest: info.Digest,
@@ -319,15 +408,21 @@ export async function inspectImage(ref) {
  */
 export async function switchImage(ref, onProgress) {
     let streamedText = "";
+    const proc = cockpit.spawn(
+        withLock(["bootc", "switch", "--transport", "registry", ref]),
+        { superuser: "require", err: "out" }
+    );
+    const { reset, clear } = inactivityTimeout(proc, DOWNLOAD_INACTIVITY_TIMEOUT_MS);
+    proc.stream(line => {
+        reset();
+        streamedText += line;
+        if (onProgress) onProgress(line);
+    });
     try {
-        return await cockpit.spawn(
-            withLock(["bootc", "switch", "--transport", "registry", ref]),
-            { superuser: "require", err: "out" }
-        ).stream(line => {
-            streamedText += line;
-            if (onProgress) onProgress(line);
-        });
+        return await proc;
     } catch (ex) {
         throw asFriendlyError(ex, streamedText);
+    } finally {
+        clear();
     }
 }

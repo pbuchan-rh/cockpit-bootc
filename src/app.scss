@@ -81,6 +81,14 @@
     margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
+// Pin/Unpin/Delete otherwise size to their own label text — "Pin" is
+// narrower than "Unpin", so rows visibly reflow/jump as pinned state
+// changes. Fixed width (sized to the longest label, "Unpin") keeps every
+// row's button column stable regardless of label or row.
+.ct-deployment-action-btn {
+    inline-size: 5.5rem;
+}
+
 .ct-disk-usage-total {
     margin-block-start: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--subtle);

@@ -7,10 +7,9 @@
         { "path-exists": "/usr/bin/bootc" }
     ],
 
-    "dashboard": {
+    "tools": {
         "index": {
             "label": "Image Updates",
-            "order": 42,
             "keywords": [
                 {
                     "matches": ["bootc", "image", "update", "rollback", "upgrade"]

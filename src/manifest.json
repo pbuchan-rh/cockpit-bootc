@@ -7,7 +7,7 @@
         { "path-exists": "/usr/bin/bootc" }
     ],
 
-    "tools": {
+    "dashboard": {
         "index": {
             "label": "Image Updates",
             "order": 42,

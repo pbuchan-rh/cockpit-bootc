@@ -3,6 +3,15 @@ node_modules/
 metafile.json
 reference/
 
+# Cockpit upstream shared files (fetched by make from the pinned commit in Makefile)
+pkg/
+test/common/
+tools/
+
+# Generated packaging files (built from packaging/*.spec.in / PKGBUILD.in)
+cockpit-bootc.spec
+packaging/arch/PKGBUILD
+
 # generated at build time, same as every other Cockpit module (po/*.po —
 # real translations, if any ever get contributed — are committed normally)
 /po/*.pot

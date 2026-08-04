@@ -3,6 +3,13 @@ node_modules/
 metafile.json
 reference/
 
+# Claude Code — user-specific, not project code
+.claude/
+
+# Internal planning and session docs — local only
+HANDOFF.md
+CLAUDE.md
+
 # Cockpit upstream shared files (fetched by make from the pinned commit in Makefile)
 pkg/
 test/common/

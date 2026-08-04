@@ -88,9 +88,11 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
 
-await page.goto('https://10.0.0.229:9090/', { waitUntil: 'networkidle' });
-await page.fill('#login-user-input', 'pbuchan');
-await page.fill('#login-password-input', '***REDACTED***');
+// COCKPIT_URL/COCKPIT_USER/COCKPIT_PASS come from tests/.env (gitignored) —
+// same convention as tests/helpers/cockpit.js. Never hardcode real credentials here.
+await page.goto(process.env.COCKPIT_URL, { waitUntil: 'networkidle' });
+await page.fill('#login-user-input', process.env.COCKPIT_USER);
+await page.fill('#login-password-input', process.env.COCKPIT_PASS);
 await page.click('#login-button');
 await page.waitForFunction(() => !document.getElementById('login-user-input'), { timeout: 15000 });
 
@@ -100,12 +102,12 @@ await unlock.waitFor({ timeout: 5000 });
 await unlock.click();
 const pw = page.locator('#account-password-input, input[type="password"]').first();
 await pw.waitFor({ timeout: 5000 });
-await pw.fill('***REDACTED***');
+await pw.fill(process.env.COCKPIT_PASS);
 await page.locator('button:has-text("Authenticate"), button[type="submit"]').first().click();
 await page.waitForTimeout(2000);
 
 // Navigate directly to the module's actual iframe URL — not /bootc
-await page.goto('https://10.0.0.229:9090/cockpit/@localhost/bootc/index.html');
+await page.goto(process.env.COCKPIT_URL + '/cockpit/@localhost/bootc/index.html');
 await page.waitForTimeout(2000);
 ```
 
@@ -153,7 +155,7 @@ When in doubt about whether something is a real backend issue vs. a UI bug, chec
 shows:
 
 ```bash
-ssh pbuchan@<host> "echo <password> | sudo -S bootc status --json 2>/dev/null" | python3 -c "
+ssh -t pbuchan@<host> "sudo bootc status --json 2>/dev/null" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)['status']
 print('staged:', d.get('staged') is not None)
@@ -168,8 +170,11 @@ distinguished a real backend bug from a stale client-side flag every time.
 
 ## Sudo notes for the live appliance
 
-SSH sudo on the bootc appliance needs an interactive password; for one-off checks,
-pipe it: `echo <password> | sudo -S <command>`. If the superuser bridge in Cockpit
-itself seems stuck (actions fail with permission errors even after unlocking
-"Administrative access" in the UI), try `sudo systemctl restart cockpit.socket` on
-the target host.
+SSH sudo on the bootc appliance needs an interactive password. Use `ssh -t` so
+the terminal prompts for it directly — never embed a plaintext password in the
+command itself (e.g. `echo <password> | sudo -S ...`); that pattern puts the
+credential in shell history and process listings, and this project's tooling
+now actively blocks it. If the superuser bridge in Cockpit itself seems stuck
+(actions fail with permission errors even after unlocking "Administrative
+access" in the UI), try `sudo systemctl restart cockpit.socket` on the target
+host.

@@ -44,6 +44,26 @@ between sessions.
   directly for pinning and listing deployments, since `bootc` itself has no
   pin/unpin command (ships with every real bootc base image; see `DESIGN.md`)
 
+## Installation
+
+**RPM via Fedora COPR (recommended):**
+
+```bash
+sudo dnf copr enable pbuchan-rh/cockpit-bootc
+sudo dnf install cockpit-bootc
+```
+
+Available for RHEL 10, CentOS Stream 10, and Fedora 43/44.
+
+**From source (Makefile):**
+
+```bash
+git clone https://github.com/pbuchan-rh/cockpit-bootc.git
+cd cockpit-bootc
+npm install
+sudo make install
+```
+
 ## Building
 
 ```

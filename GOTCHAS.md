@@ -113,6 +113,20 @@ release, since there's no live bug driving it today and the file is covered by a
 green 12-file Playwright suite that a state-shape rewrite would put at risk for
 no user-facing gain.
 
+**Known gap: digests are truncated on the status cards with no way to copy the
+full value.** `ImageStatus.jsx`'s `formatDigest()` shows `sha256:` + 12 hex
+chars + `…`, and the only way to see the rest is a native `title=` hover
+tooltip — which isn't selectable/copyable text in most browsers, so there's
+currently no way to actually get the full digest out of the UI (Peter's own
+critique, 2026-08-04). Not fixed yet — deliberately paused to discuss the
+approach first rather than ship a first draft. `cockpit-wireguard` already has
+a precedent for this exact problem (`ClipboardCopy` around its public keys,
+`OverviewCard.jsx`) — PatternFly's `ClipboardCopy` with
+`variant="inline-compact" isCode truncation` looked like the natural fit
+(keeps the compact truncated card look via its own `Truncate` + real copy
+button + accessible tooltip, no bulky input box), but that's a starting point
+for discussion, not a decided direction.
+
 **`@patternfly/react-table` is not installed** (deliberately, to keep the
 dependency footprint lean), and `patternfly-base.css` only carries the design
 tokens/reset — not per-component styles. A class name like `.pf-v6-c-table` or

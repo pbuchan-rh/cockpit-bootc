@@ -95,6 +95,24 @@ component state — including the text you just typed into the Switch ref input.
 explicitly asked (the initial `useEffect` mount call passes `true`; every other
 caller doesn't).
 
+**Known debt: `app.jsx`'s ~7 mutually-exclusive "operation in flight" flags
+(`phase`, `checking`, `switching`, `previewing`, `pinningSlot`, `pinningIndex`,
+`deletingIndex`) are separate `useState` calls, not one state machine —
+deliberately not fixed yet.** Flagged by an external AI review (2026-08-04,
+post-v1.0.0) alongside the file's total `useState` count (27, across 612 lines).
+The critique's broader ask ("useReducer for the whole component") is overscoped —
+most of those 27 are plain data (`status`, `deployments`, `diskUsage`, etc.) or
+one-off modal state, not phase-like. But the ~7 flags above genuinely are
+mutually exclusive and *have* already caused one real bug: the "must be reset on
+every path" gotcha two entries up (`handleCancelStagedUpdate` forgetting to reset
+`PHASE.DOWNLOADED`) is exactly the failure mode a proper state machine would
+prevent. Consolidating just that cluster into a single `activeOperation` reducer
+is worth doing the next time this file needs a real feature change touching any
+of those flags — not as a standalone refactor right after the public v1.0.0
+release, since there's no live bug driving it today and the file is covered by a
+green 12-file Playwright suite that a state-shape rewrite would put at risk for
+no user-facing gain.
+
 **`@patternfly/react-table` is not installed** (deliberately, to keep the
 dependency footprint lean), and `patternfly-base.css` only carries the design
 tokens/reset — not per-component styles. A class name like `.pf-v6-c-table` or

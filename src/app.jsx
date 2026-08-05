@@ -25,6 +25,7 @@ import {
     getNextAutoUpdateRun,
     switchImage,
     inspectImage,
+    setAutoUpdate,
     setDeploymentPinned,
     setDeploymentPinnedByIndex,
     deleteDeployment,
@@ -321,7 +322,6 @@ export const App = () => {
     }
 
     async function handleAutoUpdateToggle(enabled) {
-        const { setAutoUpdate } = await import('./lib/bootc.js');
         try {
             await setAutoUpdate(enabled);
             setAutoUpdateStatus(enabled ? 'active' : 'inactive');

@@ -34,16 +34,47 @@ Every mutating action (update, rollback, switch, pin/unpin, auto-update toggle) 
 
 ## Installation
 
-**RPM via Fedora COPR (recommended):**
+cockpit-bootc manages a bootc-based root, so it's meant to ship as part of your
+bootc image, not installed ad hoc on a running host afterward.
+
+**Bake into a bootc image (recommended):**
+
+```dockerfile
+RUN dnf -y copr enable -y pbuchan-rh/cockpit-bootc rhel-10-x86_64 && \
+    dnf -y install cockpit-bootc && \
+    dnf -y copr disable pbuchan-rh/cockpit-bootc && \
+    dnf clean all
+```
+
+This is the exact block we use to build our own bootc appliance image. Two
+things worth knowing:
+
+- Name the chroot explicitly (`rhel-10-x86_64`, `centos-stream-10-x86_64`, or
+  `fedora-43-x86_64`/`fedora-44-x86_64`). `dnf copr enable` with no chroot
+  argument can misdetect as `epel-10-x86_64` and fail, since that chroot
+  doesn't exist in this project.
+- Disable the COPR repo again once installed. bootc images update by pulling
+  a whole new image, not `dnf update` on the deployed host, so there's no
+  reason to leave a third-party repo enabled on a shipped appliance.
+
+Rebuild and push your image as usual — no separate install step is needed on
+the deployed host.
+
+**Install directly on a running bootc host (testing only):**
 
 ```bash
 sudo dnf copr enable pbuchan-rh/cockpit-bootc
 sudo dnf install cockpit-bootc
 ```
 
-Available for RHEL 10, CentOS Stream 10, and Fedora 43/44.
+Useful for trying the module on a host you don't want to rebuild yet, but a
+bootc-managed root is read-only by design — this only works if `/usr` already
+has a transient overlay (`bootc usr-overlay`) or the deployment has been
+`ostree admin unlock`ed, and either way the install is lost on the next
+reboot or image switch. Don't use this for a real deployment; use the
+Containerfile method above instead.
 
-**From source (Makefile):**
+**From source (Makefile), for local development on a non-bootc machine:**
 
 ```bash
 git clone https://github.com/pbuchan-rh/cockpit-bootc.git

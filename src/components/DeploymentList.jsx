@@ -43,7 +43,7 @@ export const DeploymentList = ({ deployments, versionByChecksum, diskUsage, pinn
                         <Th>{_("Version")}</Th>
                         <Th>{_("Slot")}</Th>
                         <Th>{_("Pinned")}</Th>
-                        <Th screenReaderText={_("Actions")} />
+                        <Th screenReaderText={_("Actions")} className="pf-v6-c-table__action" />
                     </Tr>
                 </Thead>
                 <Tbody>
@@ -57,7 +57,7 @@ export const DeploymentList = ({ deployments, versionByChecksum, diskUsage, pinn
                             </Td>
                             <Td dataLabel={_("Slot")}>{slotLabel(d.slot)}</Td>
                             <Td dataLabel={_("Pinned")}>{d.pinned ? <Label color="purple">{_("Pinned")}</Label> : "—"}</Td>
-                            <Td dataLabel={_("Actions")}>
+                            <Td dataLabel={_("Actions")} isActionCell>
                                 <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>
                                     <FlexItem>
                                         <Button

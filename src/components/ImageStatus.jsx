@@ -54,7 +54,8 @@ function ImageInfo({ data, showRebootType }) {
                     <DescriptionListTerm>{_("Digest")}</DescriptionListTerm>
                     <DescriptionListDescription>
                         <ClipboardCopy
-                            isReadOnly isCode truncation
+                            isReadOnly isCode
+                            truncation={{ tooltipProps: {} }}
                             hoverTip={_("Copy")} clickTip={_("Copied")}
                             variant="inline-compact"
                         >

@@ -1,6 +1,7 @@
 import cockpit from 'cockpit';
 import React, { useState } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
+import { ClipboardCopy } from "@patternfly/react-core/dist/esm/components/ClipboardCopy/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
@@ -99,7 +100,13 @@ export const SwitchImage = ({
                         <DescriptionListGroup>
                             <DescriptionListTerm>{_("Digest")}</DescriptionListTerm>
                             <DescriptionListDescription>
-                                <code>{preview.digest}</code>
+                                <ClipboardCopy
+                                    isReadOnly isCode truncation
+                                    hoverTip={_("Copy")} clickTip={_("Copied")}
+                                    variant="inline-compact"
+                                >
+                                    {preview.digest}
+                                </ClipboardCopy>
                             </DescriptionListDescription>
                         </DescriptionListGroup>
                         <DescriptionListGroup>

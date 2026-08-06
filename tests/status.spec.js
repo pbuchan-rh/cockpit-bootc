@@ -28,6 +28,28 @@ test.describe('status', () => {
         await expect(bootedCard.locator('text=/sha256:/')).toBeVisible();
     });
 
+    test('Booted card digest has a working copy-to-clipboard button', async ({ page, context, browserName }) => {
+        await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });
+
+        const bootedCard = page.locator('.pf-v6-c-card', { has: page.locator('text=Booted') });
+        const copyButton = bootedCard.getByRole('button', { name: 'Copy' });
+        await expect(copyButton).toBeVisible();
+
+        // Clipboard permission grants are Chromium-only in Playwright — the
+        // button still renders and is clickable in Firefox, it just can't be
+        // verified via navigator.clipboard.readText() here.
+        test.skip(browserName !== 'chromium', 'Clipboard read-back only supported in Chromium');
+
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await copyButton.click();
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        // The card only ever displays a truncated digest (PatternFly's own
+        // Truncate, since formatDigest()'s manual slicing was removed) — a
+        // full, untruncated sha256 digest is exactly this shape, proving the
+        // copy button grabs the real value, not the shortened display text.
+        expect(copied).toMatch(/^sha256:[0-9a-f]{64}$/);
+    });
+
     test('admin access is unlocked before the module needs it', async ({ page }) => {
         // If admin elevation in loginToCockpit failed, the module would show
         // the "Administrative access required" empty state instead of real

@@ -24,6 +24,23 @@ test.describe('switch image', () => {
         await expect(stagedCard.locator('text=No update staged')).toBeVisible();
     });
 
+    test('Preview digest has a working copy-to-clipboard button', async ({ page, context, browserName }) => {
+        await page.fill('#switch-image-ref', OTHER_TAG_REF);
+        await page.locator('button:has-text("Inspect")').click();
+        await expect(page.locator('button:has-text("Inspecting")')).toHaveCount(0, { timeout: 20000 });
+
+        const preview = page.locator('.ct-switch-preview');
+        const copyButton = preview.getByRole('button', { name: 'Copy' });
+        await expect(copyButton).toBeVisible();
+
+        test.skip(browserName !== 'chromium', 'Clipboard read-back only supported in Chromium');
+
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await copyButton.click();
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copied).toMatch(/^sha256:[0-9a-f]{64}$/);
+    });
+
     test('Switch stages the new image, then switching back restores original state', async ({ page }) => {
         // --- Switch to the other tag ---
         await page.fill('#switch-image-ref', OTHER_TAG_REF);

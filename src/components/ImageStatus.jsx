@@ -2,6 +2,7 @@ import cockpit from 'cockpit';
 import React from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { ClipboardCopy } from "@patternfly/react-core/dist/esm/components/ClipboardCopy/index.js";
 import { DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm } from "@patternfly/react-core/dist/esm/components/DescriptionList/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
@@ -28,13 +29,6 @@ function parseImageSlot(slot) {
     };
 }
 
-function formatDigest(digest) {
-    if (!digest) return null;
-    // Show "sha256:abc123de" truncated to 19 chars total
-    const hash = digest.startsWith("sha256:") ? digest.slice(7) : digest;
-    return "sha256:" + hash.slice(0, 12) + "…";
-}
-
 function formatTimestamp(ts) {
     if (!ts) return null;
     return new Date(ts).toLocaleString();
@@ -59,7 +53,13 @@ function ImageInfo({ data, showRebootType }) {
                 <DescriptionListGroup>
                     <DescriptionListTerm>{_("Digest")}</DescriptionListTerm>
                     <DescriptionListDescription>
-                        <code title={data.digest}>{formatDigest(data.digest)}</code>
+                        <ClipboardCopy
+                            isReadOnly isCode truncation
+                            hoverTip={_("Copy")} clickTip={_("Copied")}
+                            variant="inline-compact"
+                        >
+                            {data.digest}
+                        </ClipboardCopy>
                     </DescriptionListDescription>
                 </DescriptionListGroup>
             )}

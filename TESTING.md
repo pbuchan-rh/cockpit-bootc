@@ -1,15 +1,46 @@
 # cockpit-bootc — Test suite + manual verification notes
 
-A real, committed, assertion-based Playwright suite exists under `tests/`
-(`status.spec.js`, `update-lifecycle.spec.js`, `rollback.spec.js`,
-`switch-image.spec.js`, `auto-update.spec.js`, `admin-gating.spec.js`,
-`security.spec.js`) — run with `npm test` against both Chromium and Firefox.
-Most tests perform real mutating actions (switch, rollback, toggling
-auto-update) against the live appliance and clean up after themselves,
-verified against real `bootc status --json`/`systemctl` state, not just the
-UI — see each spec for the specific cleanup step. This doc captures the
-patterns and pitfalls found writing them, so they don't have to be
-rediscovered for the next module.
+A real, committed, assertion-based Playwright suite lives under `tests/`:
+12 spec files, run against a live bootc host in both Chromium and Firefox.
+
+| Spec | Covers | Changes the host? |
+|---|---|---|
+| `status.spec.js` | cards, digests, copy buttons, admin unlocked; non-bootc host (`NOTBOOTC_URL`) | no |
+| `admin-gating.spec.js` | the view before admin access is on | no |
+| `security.spec.js` | no `--tls-verify`, `isSafeUrl`, bad refs never reach the registry | no |
+| `update-lifecycle.spec.js` | Check for Updates badge; Download + discard | Download only |
+| `switch-image.spec.js` | Inspect, copy digest, friendly "tag not found"; switch to `:1.0` and back | the switch |
+| `rollback-warning.spec.js` | rollback modal wording (`/etc`, auto-update note) | no |
+| `modal-focus.spec.js` | focus after Cancel/Escape | no |
+| `deployment-list.spec.js` | versions in the table; pin/unpin, Delete modal | pin round-trip |
+| `auto-update.spec.js` | switch matches systemd; Off masks, On unmasks + starts | the toggle |
+| `rollback.spec.js` | stage + cancel a rollback | yes |
+| `cancel-update.spec.js` | Download then Discard leaves nothing queued | yes |
+| `usr-overlay.spec.js` | drift warning; creates a transient `/usr` overlay | yes |
+
+**Plain `npm test` never changes the host.** Every test that does (stage/discard
+an update or rollback, switch images, pin/unpin, toggle the auto-update timer,
+create a `/usr` overlay) is skipped unless you opt in:
+
+```bash
+npm test                          # read-only checks only
+BOOTC_DESTRUCTIVE=1 npm test      # also the mutating tests
+NOTBOOTC_URL=https://<package-mode-host>:9090 npm test   # also the non-bootc check
+```
+
+The mutating tests clean up after themselves (discard what they stage, cancel
+the rollback, re-pin, turn auto-update back on) and check the result against
+real `bootc status --json`/`systemctl` output, not just the UI. Two leave
+something behind on purpose: `usr-overlay.spec.js` creates a transient `/usr`
+overlay that lasts until the next reboot, and a switch that is interrupted
+mid-way can leave a staged deployment. Run the destructive set only on a host
+you are allowed to change.
+
+Exact counts for a run are in `tests/test-results/results.json` (Playwright JSON
+reporter: `stats.expected` passed, `stats.unexpected` failed, `stats.skipped`).
+
+This doc captures the patterns and pitfalls found writing the suite, so they
+don't have to be rediscovered for the next module.
 
 ## Scaffolding (`tests/`)
 
@@ -39,13 +70,13 @@ run (across all projects, not per-project) to a single worker, so `npm test`
 runs all of Chromium's tests, then all of Firefox's, one at a time — never
 both browsers hitting the shared live appliance/Cockpit session at once.
 
-`tests/adhoc/` holds ~100 throwaway scripts accumulated during development
-(originally left in `/tmp`, moved here 2026-06-22 so they aren't lost to a
-reboot/tmp-cleaner, plus the ones generated while debugging the admin-elevation
-bug below). They're investigation scripts, not a test suite — most have no
-assertions, just `console.log`/screenshots, and many still hardcode
-host/credentials inline rather than using `tests/helpers/cockpit.js`. Treat
-them as a reference for "how was X verified," not something to run as CI.
+There is no `tests/adhoc/` any more: the useful investigation scripts were
+turned into specs or dropped (2026-06-24).
+
+`tests/helpers/host.js` is the SSH side: `bootcStatus()`, `timerState()` and
+`hostSudo()`, which pipes `COCKPIT_PASS` to `sudo -S` on stdin. Never put the
+password in the command string (`echo '<pass>' | sudo -S ...` inside an `ssh`
+argument is visible in `ps` on both machines); 1.1.1's specs did that.
 
 ## A real bug the suite caught immediately
 
@@ -67,10 +98,12 @@ overlapping spawn attempts mid-handshake left orphaned
 flakes out again, check `ps aux | grep cockpit-bridge` on the target host for
 this exact symptom before assuming it's a code regression.
 
-**Backlog:** the remaining ad-hoc scripts in `tests/adhoc/` may still contain
-useful coverage not yet ported into a real spec (e.g. progress-log streaming,
-cancel-during-download timing, focus/tab-order checks) — not done, flagged so
-it isn't lost track of.
+**Second admin-unlock bug (fixed in 1.1.2):** the helper only waited for the
+password field. On hosts with NOPASSWD sudo (including the reference
+appliance), Cockpit shows "You now have administrative access." with just a
+**Close** button and no password field, so 44 of 52 tests failed at the
+unlock step. `requestAdmin()` now waits for whichever of the two dialogs
+appears first.
 
 ## The login + navigation pattern
 
@@ -96,14 +129,21 @@ await page.fill('#login-password-input', process.env.COCKPIT_PASS);
 await page.click('#login-button');
 await page.waitForFunction(() => !document.getElementById('login-user-input'), { timeout: 15000 });
 
-// Unlock admin access — required for anything that calls bootc (it needs root)
+// Unlock admin access — required for anything that calls bootc (it needs root).
+// Either a password prompt or, with NOPASSWD sudo, a "You now have
+// administrative access" dialog with only a Close button: wait for whichever.
 const unlock = page.locator('button:has-text("Limited access"), button:has-text("Turn on administrative access")').first();
 await unlock.waitFor({ timeout: 5000 });
 await unlock.click();
 const pw = page.locator('#account-password-input, input[type="password"]').first();
-await pw.waitFor({ timeout: 5000 });
-await pw.fill(process.env.COCKPIT_PASS);
-await page.locator('button:has-text("Authenticate"), button[type="submit"]').first().click();
+const close = page.locator('.pf-v6-c-modal-box button:has-text("Close")').first();
+await Promise.race([pw.waitFor({ timeout: 10000 }), close.waitFor({ timeout: 10000 })]);
+if (await pw.isVisible().catch(() => false)) {
+    await pw.fill(process.env.COCKPIT_PASS);
+    await page.locator('button:has-text("Authenticate"), button[type="submit"]').first().click();
+} else {
+    await close.click();
+}
 await page.waitForTimeout(2000);
 
 // Navigate directly to the module's actual iframe URL — not /bootc
@@ -170,11 +210,10 @@ distinguished a real backend bug from a stale client-side flag every time.
 
 ## Sudo notes for the live appliance
 
-SSH sudo on the bootc appliance needs an interactive password. Use `ssh -t` so
-the terminal prompts for it directly — never embed a plaintext password in the
-command itself (e.g. `echo <password> | sudo -S ...`); that pattern puts the
-credential in shell history and process listings, and this project's tooling
-now actively blocks it. If the superuser bridge in Cockpit itself seems stuck
+By hand, use `ssh -t` so sudo prompts in your terminal. In scripts, use
+`hostSudo()` from `tests/helpers/host.js` (password on stdin). Never embed a
+plaintext password in the command itself (e.g. `echo <password> | sudo -S ...`):
+that puts the credential in shell history and process listings. If the superuser bridge in Cockpit itself seems stuck
 (actions fail with permission errors even after unlocking "Administrative
 access" in the UI), try `sudo systemctl restart cockpit.socket` on the target
 host.

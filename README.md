@@ -11,10 +11,14 @@ rollbacks.
 - **Roll back**, in either direction
 - **Switch images** — point at any registry/tag, preview version/digest/source before committing
 - **Cancel** a staged update or queued rollback cleanly — no reboot, no side effects
-- **Automatic updates** — toggle the `bootc-fetch-apply-updates.timer`, with a confirmation before enabling unattended fetch+apply+reboot
-- **Pin/unpin** the booted or rollback deployment against `bootc`'s automatic garbage collection
+- **Automatic updates** — turn `bootc-fetch-apply-updates.timer` on or off, with a confirmation before enabling unattended fetch+apply+reboot. Off masks the timer (`systemctl stop` + `mask`), because RHEL bootc images enable it from `/usr` and a plain `disable` comes back at the next boot; On unmasks and starts it. The setting lives in `/etc`, and every deployment has its own `/etc`, so after a rollback check the switch again
+- **Pin/unpin** any deployment (booted, rollback, or an older one that has rotated out of `bootc status`) against automatic garbage collection
 - **All deployments view** — every deployment ostree knows about, not just the 3 slots `bootc status` reports, plus combined image-store disk usage
+- **Delete** an unpinned deployment that is no longer booted, staged or the rollback (space is freed only for content no other deployment shares)
+- **Readable registry errors** — "tag not found", "access denied" and "registry unreachable" in one sentence, with the raw `skopeo`/`bootc` output one click away
 - **`/usr` drift warning** if a transient `bootc usr-overlay` is mounted
+
+The module only appears on hosts actually booted from a bootc image (`/run/ostree-booted`); RHEL package-mode hosts ship the `bootc` binary too, but there is nothing for it to manage there.
 
 The module is intentionally stateless — no `/var/lib/cockpit-bootc/`, no settings, no history. Everything shown is a live read of `bootc status`/`skopeo inspect`.
 
@@ -87,15 +91,25 @@ sudo make install
 
 ```
 npm install
-./build.js
+./build.js                  # development build: unminified, with source maps
+NODE_ENV=production ./build.js
+make rpm                    # always a clean production build; fails otherwise
 ```
+
+`make dist`/`srpm`/`rpm` rebuild `dist/` from scratch with `NODE_ENV=production`
+and check the result (`make check-dist`): compressed `index.js.gz`/`index.css.gz`,
+no source maps, a minified bundle, and the PatternFly assets the CSS references.
+The version comes from `git describe`; to build an untagged tree as a given
+version, pass it explicitly, e.g. `make rpm VERSION=1.1.2`.
 
 Real automated tests (Playwright, against a live bootc host) live under `tests/` —
 see `TESTING.md` for setup and the login/navigation pattern.
 
-Translation infrastructure (`cockpit.gettext`/`po/*.pot` extraction) is wired up
-the same way as other Cockpit modules, but `po/` deliberately has no real
-`<lang>.po` files yet — those come from translator contributions, not this repo.
+Translations: all UI strings go through `cockpit.gettext`, and the Makefile has
+the usual Cockpit `po/*.pot` extraction targets, but nothing is translated yet.
+`po/` has no `.pot` or `<lang>.po` files, and several sentences are still built
+from separate fragments, which translators can't reorder. Making them
+translatable is planned for 1.2.
 
 ## Troubleshooting
 

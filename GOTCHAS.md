@@ -53,6 +53,19 @@ don't track "is a rollback staged" as local component/React state, or it will ro
 out of sync the moment something changes server-side without going through your
 exact code path (we hit this twice in one session).
 
+**`systemctl disable` doesn't keep `bootc-fetch-apply-updates.timer` off on RHEL
+bootc images.** The image enables it from `/usr`
+(`/usr/lib/systemd/system/default.target.wants/`), which `disable` can't touch,
+so after the next boot it's `disabled` but `active` again. Only a mask in `/etc`
+outranks that. Two more traps, both seen live on RHEL 10 / systemd 257 (1.1.2):
+
+- `systemctl mask --now` masks *before* stopping, so the running timer loses its
+  unit ("Unit to trigger vanished") and ends `failed (Result: resources)`, which
+  shows as a failed service in the shell. Stop first, then mask.
+- `/etc` is per deployment. Masked on 3.12, rolled back to 3.11: the timer was
+  running again (3.11's own `/etc`); rolled forward: masked again. Turning
+  auto-update off before a rollback therefore does not protect the rollback.
+
 ## App architecture gotchas
 
 **Persisting data to disk is not the default — check against the core mission

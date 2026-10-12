@@ -79,3 +79,14 @@ appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/metainfo/*
 %{_datadir}/metainfo/*
 
 %changelog
+* Mon Oct 12 2026 Peter Buchan <pjbuchanjr@gmail.com> - 1.1.2-1
+- Automatic updates: Off now masks bootc-fetch-apply-updates.timer, so it
+  stays off across reboots; On unmasks and starts it
+- Rollback confirmations say the target deployment keeps its own
+  automatic-update setting
+- Only show the module on hosts booted from a bootc image
+  (/run/ostree-booted); show an empty state if reached anyway
+- Ship the minified production bundle again (1.1.1 shipped a development
+  build) and the PatternFly assets the CSS references
+- Readable registry errors with the raw output under Details
+- Delete confirmation names the deployment by index and version

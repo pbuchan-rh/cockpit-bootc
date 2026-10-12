@@ -14,4 +14,26 @@
   </description>
   <extends>org.cockpit_project.cockpit</extends>
   <launchable type="cockpit-manifest">bootc</launchable>
+  <url type="homepage">https://github.com/pbuchan-rh/cockpit-bootc</url>
+  <url type="bugtracker">https://github.com/pbuchan-rh/cockpit-bootc/issues</url>
+  <developer id="io.github.pbuchan-rh">
+    <name>Peter Buchan</name>
+  </developer>
+  <releases>
+    <release version="1.1.2" date="2026-10-12">
+      <description>
+        <p>Usability and packaging fixes:</p>
+        <ul>
+          <li>Turning automatic updates off now survives a reboot (the timer is masked)</li>
+          <li>The module only appears on systems booted from a bootc image</li>
+          <li>The RPM ships the minified production bundle again</li>
+          <li>Registry errors are shown in one sentence, with the raw output under Details</li>
+          <li>Clearer rollback and delete confirmations</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.1.1" date="2026-08-06"/>
+    <release version="1.1.0" date="2026-08-06"/>
+    <release version="1.0.0" date="2026-08-04"/>
+  </releases>
 </component>

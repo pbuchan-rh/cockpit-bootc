@@ -212,7 +212,20 @@ comparison, not bootc's own unreliable `--check`), stage + apply update with
 soft-reboot, bidirectional rollback, clean cancel for staged updates/queued
 rollbacks, auto-update timer toggle (gated behind confirmation), `bootc switch`
 with a `skopeo`-based preview before committing, `usr-overlay` drift detection
-(warning only, not the ability to create one), and admin-gating.
+(warning only, not the ability to create one), and admin-gating. Since then:
+pin/unpin (via `ostree admin pin`, for the booted/rollback slots and for any
+off-slot deployment), an all-deployments table with delete for unpinned
+off-slot deployments, and (1.1.2) an auto-update Off that survives reboots.
+
+**Auto-update Off is a mask (1.1.2).** RHEL bootc images enable
+`bootc-fetch-apply-updates.timer` from `/usr`
+(`default.target.wants`), which `systemctl disable` can't remove, so 1.1.1's
+disable was undone at every boot. Off is now `systemctl stop` + `systemctl mask`
+and On is `unmask` + `start`; the switch reads both `UnitFileState` and
+`ActiveState`. That's admin configuration in `/etc`, not patching a unit we
+don't own. The catch is that `/etc` is per deployment: a rollback boots into a
+deployment with its own auto-update setting, which the rollback modals now say
+plainly. See `GOTCHAS.md`.
 
 **Deliberately stateless:** an earlier iteration added persistence
 (`/var/lib/cockpit-bootc/` — recent-refs settings, a status cache for Limited
@@ -236,8 +249,6 @@ The original "out of scope (v1)" list undersold what the module ended up coverin
 once it became clear the module needed to cover the full bootc lifecycle, not just
 a v1 slice. What's actually still out of scope:
 
-- **Pinning** (`bootc edit` to protect a deployment from GC) — real bootc
-  capability, scoped, but needs a spec read-modify-write cycle; not yet built.
 - `bootc edit` (raw spec editing) and `bootc loader-entries` (bootloader
   internals) — still correctly excluded as too low-level for a general UI.
 - Sealed-image/composefs verification status — blocked upstream, no `bootc status`
@@ -246,6 +257,7 @@ a v1 slice. What's actually still out of scope:
 
 ## Status
 
-Not upstream — standalone community module, not yet public. Hosted privately on
-Gitea (`git.beastmode.localdomain`) until ready for public release; GitHub remote
-deferred until then.
+Not upstream: a standalone community module. Public at
+[github.com/pbuchan-rh/cockpit-bootc](https://github.com/pbuchan-rh/cockpit-bootc),
+with RPMs built in COPR (`pbuchan-rh/cockpit-bootc`). Day-to-day development
+happens on a private Gitea and is published to GitHub at release time.

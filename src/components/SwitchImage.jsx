@@ -6,6 +6,7 @@ import { DescriptionList, DescriptionListDescription, DescriptionListGroup, Desc
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { isSafeUrl } from '../lib/url-safety.js';
+import { ErrorDetails } from './ErrorDetails.jsx';
 
 const _ = cockpit.gettext;
 
@@ -81,7 +82,10 @@ export const SwitchImage = ({
                 </Flex>
 
                 {previewError && (
-                    <p className="ct-switch-preview-error">{cockpit.format(_("Could not inspect image: $0"), previewError)}</p>
+                    <div className="ct-switch-preview-error-block">
+                        <p className="ct-switch-preview-error">{cockpit.format(_("Could not inspect image: $0"), previewError.message)}</p>
+                        <ErrorDetails details={previewError.details} />
+                    </div>
                 )}
 
                 {preview && !previewError && (

@@ -41,6 +41,7 @@ import { AutoUpdate } from './components/AutoUpdate.jsx';
 import { UpdateActions } from './components/UpdateActions.jsx';
 import { SwitchImage } from './components/SwitchImage.jsx';
 import { DeploymentList } from './components/DeploymentList.jsx';
+import { ErrorDetails } from './components/ErrorDetails.jsx';
 
 const _ = cockpit.gettext;
 
@@ -53,6 +54,12 @@ function formatAgo(date, now) {
     if (minutes < 60) return cockpit.format(_("${0}m ago"), minutes);
     const hours = Math.floor(minutes / 60);
     return cockpit.format(_("${0}h ago"), hours);
+}
+
+// What the error Alert (and the inspect error) shows: a title naming what
+// failed, the friendly message, and the raw tool output when bootc.js kept it.
+function errorFrom(title, ex) {
+    return { title, message: ex?.message || String(ex), details: ex?.details || null };
 }
 
 // Phases of the update/rollback lifecycle
@@ -142,7 +149,7 @@ export const App = () => {
             setTrackedRef(s.spec?.image?.image ?? null);
             return s.status;
         } catch (ex) {
-            if (!isStale()) setError(ex.message);
+            if (!isStale()) setError(errorFrom(_("Could not read image status"), ex));
             return null;
         } finally {
             if (!isStale()) setLoading(false);
@@ -171,7 +178,7 @@ export const App = () => {
             setUpdateAvailable(available);
             setLastChecked(new Date());
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Checking for updates failed"), ex));
         } finally {
             setChecking(false);
         }
@@ -192,7 +199,7 @@ export const App = () => {
             setPhase(PHASE.DOWNLOADED);
             setUpdateAvailable(null);
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Downloading the update failed"), ex));
             setPhase(PHASE.IDLE);
         }
     }
@@ -203,7 +210,7 @@ export const App = () => {
         try {
             await applyUpdate();
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Applying the update failed"), ex));
             setPhase(PHASE.DOWNLOADED);
         }
     }
@@ -216,7 +223,7 @@ export const App = () => {
             await loadStatus(); // status.rollbackQueued now reflects this — no local flag needed
             setUpdateAvailable(null);
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Rollback failed"), ex));
         }
     }
 
@@ -227,7 +234,7 @@ export const App = () => {
             await setDeploymentPinned(slot, !currentlyPinned);
             await loadStatus();
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(currentlyPinned ? _("Unpinning failed") : _("Pinning failed"), ex));
         } finally {
             setPinningSlot(null);
         }
@@ -240,7 +247,7 @@ export const App = () => {
             await setDeploymentPinnedByIndex(index, !currentlyPinned, expectedChecksum);
             await loadStatus();
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(currentlyPinned ? _("Unpinning failed") : _("Pinning failed"), ex));
         } finally {
             setPinningIndex(null);
         }
@@ -266,7 +273,7 @@ export const App = () => {
             await deleteDeployment(index, expectedChecksum);
             await loadStatus();
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Deleting the deployment failed"), ex));
         } finally {
             setDeletingIndex(null);
         }
@@ -280,7 +287,7 @@ export const App = () => {
             await loadStatus();
             setPhase(PHASE.IDLE); // handleDownloadUpdate may have left phase stuck at DOWNLOADED
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Discarding the staged update failed"), ex));
         }
     }
 
@@ -290,7 +297,7 @@ export const App = () => {
         try {
             await reboot();
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Reboot failed"), ex));
             setPhase(PHASE.IDLE);
         }
     }
@@ -310,7 +317,7 @@ export const App = () => {
             await loadStatus();
             setUpdateAvailable(null);
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(_("Switching image failed"), ex));
         } finally {
             setSwitching(false);
         }
@@ -327,7 +334,7 @@ export const App = () => {
             // could land after the field already shows something else.
             if (switchRefRef.current === ref) setPreview(result);
         } catch (ex) {
-            if (switchRefRef.current === ref) setPreviewError(ex.message);
+            if (switchRefRef.current === ref) setPreviewError(errorFrom(_("Could not inspect image"), ex));
         } finally {
             setPreviewing(false);
         }
@@ -337,7 +344,7 @@ export const App = () => {
         try {
             await setAutoUpdate(enabled);
         } catch (ex) {
-            setError(ex.message);
+            setError(errorFrom(enabled ? _("Turning on automatic updates failed") : _("Turning off automatic updates failed"), ex));
         }
         // Re-read instead of assuming: the switch must show what systemd
         // reports, including after a partial failure (e.g. unmask worked,
@@ -416,11 +423,12 @@ export const App = () => {
                 {error && !(!status && !adminAllowed) && (
                     <Alert
                         variant="danger"
-                        title={_("Error")}
+                        title={error.title}
                         isInline
-                        actionClose={<Button variant="plain" onClick={() => setError(null)}>×</Button>}
+                        actionClose={<Button variant="plain" aria-label={_("Close error")} onClick={() => setError(null)}>×</Button>}
                     >
-                        {error}
+                        {error.message}
+                        <ErrorDetails details={error.details} />
                     </Alert>
                 )}
 

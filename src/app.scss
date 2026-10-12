@@ -185,3 +185,17 @@
     margin-block-start: var(--pf-t--global--spacer--sm);
     color: var(--pf-t--global--text--color--status--danger--default);
 }
+
+// Raw skopeo/bootc output under a friendly error (ErrorDetails.jsx).
+.ct-error-details {
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-error-details-text {
+    max-block-size: 12rem;
+    overflow: auto;
+    font-family: var(--pf-t--global--font--family--mono);
+    font-size: var(--pf-t--global--font--size--sm);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

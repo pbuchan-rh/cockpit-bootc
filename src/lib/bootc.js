@@ -13,23 +13,78 @@ const _ = cockpit.gettext;
  */
 const LOCK_FILE = "/run/ostree-booted";
 
+// --verbose is what makes flock print "failed to get lock" (how asFriendlyError
+// tells a held lock from a bootc failure); its two informational lines are
+// noise and get stripped from anything shown to the user.
 function withLock(argv) {
     return ["flock", "--nonblock", "--verbose", LOCK_FILE, ...argv];
 }
 
-// Distinguish "another bootc-mutating call is already running" from a real
-// command failure so the UI can show something actionable instead of raw
-// flock/bootc stderr. streamedText covers stageUpdate/switchImage, which use
-// err: "out" (stderr merged into the streamed output, not ex.message).
+export function stripFlockLines(text) {
+    return text.split("\n")
+            .filter(line => !/^flock: (getting lock took|executing) /.test(line))
+            .join("\n");
+}
+
+// Turn the registry errors skopeo (and bootc, which uses the same
+// containers/image code) print into one sentence. Matches the error text, not
+// exit codes: skopeo exits 1 for all of them. Returns null when unrecognized.
+// Samples (skopeo 1.20, .229):
+//   reading manifest does-not-exist in 10.0.0.208:5000/bootc-cockpit-demo: manifest unknown
+//   reading manifest latest in docker.io/library/null: requested access to the resource is denied
+//   pinging container registry nonexistent-host.invalid: Get "...": dial tcp: lookup ...: no such host
+//   pinging container registry 10.0.0.208:5001: Get "...": dial tcp ...: connect: no route to host
+function registryErrorMessage(raw) {
+    const manifest = raw.match(/reading manifest (\S+) in (\S+): /);
+    const registry = raw.match(/pinging container registry (\S+): /);
+    if (/manifest unknown/.test(raw)) {
+        return manifest
+            ? cockpit.format(_("Tag \"$0\" was not found in $1."), manifest[1], manifest[2])
+            : _("The image was not found in the registry.");
+    }
+    if (/requested access to the resource is denied|unauthorized|authentication required/i.test(raw)) {
+        return manifest
+            ? cockpit.format(_("The registry denied access to $0. The repository may not exist, or the registry needs credentials this system doesn't have."), manifest[2])
+            : _("The registry denied access to the image. The repository may not exist, or the registry needs credentials this system doesn't have.");
+    }
+    const host = registry ? registry[1] : _("the registry");
+    if (/no such host/.test(raw)) {
+        return cockpit.format(_("Could not find $0: the host name did not resolve."), host);
+    }
+    if (/i\/o timeout|timed out|no route to host|connection refused|network is unreachable|TLS handshake timeout/i.test(raw)) {
+        return cockpit.format(_("Could not connect to $0."), host);
+    }
+    return null;
+}
+
+// skopeo's fatal line is a logrus record (time="..." level=fatal msg="...");
+// show just the msg when nothing better is known.
+function lastMeaningfulLine(raw) {
+    const lines = raw.split("\n").map(l => l.trim())
+            .filter(Boolean);
+    const last = lines[lines.length - 1] || "";
+    const logrus = last.match(/level=fatal msg="(.*)"$/);
+    return logrus ? logrus[1].replace(/\\"/g, '"') : last;
+}
+
+// Turn a failed spawn into an Error the UI can show: a short message plus
+// `details`, the raw tool output (flock chatter removed) for an expandable
+// section. streamedText covers stageUpdate/switchImage, which use err: "out"
+// (stderr merged into the streamed output, not ex.message).
 function asFriendlyError(ex, streamedText = "") {
-    const text = (ex && ex.message) || streamedText;
-    if (ex && ex.exit_status === 1 && /failed to get lock/.test(text)) {
-        return new Error(_("Another bootc operation is already in progress. Try again in a moment."));
+    const raw = stripFlockLines(streamedText || (ex && ex.message) || String(ex)).trim();
+    const friendly = message => {
+        const err = new Error(message);
+        if (raw && raw !== message) err.details = raw;
+        return err;
+    };
+    if (ex && ex.exit_status === 1 && /failed to get lock/.test(raw)) {
+        return friendly(_("Another bootc operation is already in progress. Try again in a moment."));
     }
     if (ex && ex.problem === "timeout") {
-        return new Error(_("The operation timed out — the registry may be unreachable. Try again."));
+        return friendly(_("The operation timed out — the registry may be unreachable. Try again."));
     }
-    return ex;
+    return friendly(registryErrorMessage(raw) || lastMeaningfulLine(raw) || _("The command failed."));
 }
 
 // cockpit.spawn() has no built-in timeout — a registry that hangs (network
@@ -161,7 +216,8 @@ export async function stageUpdate(onProgress) {
     proc.stream(line => {
         reset();
         streamedText += line;
-        if (onProgress) onProgress(line);
+        const shown = stripFlockLines(line);
+        if (onProgress && shown.trim()) onProgress(shown);
     });
     try {
         return await proc;
@@ -393,11 +449,16 @@ export async function setAutoUpdate(enabled) {
  * unlike bootc status, which only knows about already-fetched deployments.
  */
 export async function inspectImage(ref) {
-    const output = await spawnWithTimeout(
-        ["skopeo", "inspect", `docker://${ref}`],
-        { err: "message" },
-        INSPECT_TIMEOUT_MS
-    );
+    let output;
+    try {
+        output = await spawnWithTimeout(
+            ["skopeo", "inspect", `docker://${ref}`],
+            { err: "message" },
+            INSPECT_TIMEOUT_MS
+        );
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
     const info = JSON.parse(output);
     const labels = info.Labels || {};
 
@@ -459,7 +520,8 @@ export async function switchImage(ref, onProgress) {
     proc.stream(line => {
         reset();
         streamedText += line;
-        if (onProgress) onProgress(line);
+        const shown = stripFlockLines(line);
+        if (onProgress && shown.trim()) onProgress(shown);
     });
     try {
         return await proc;

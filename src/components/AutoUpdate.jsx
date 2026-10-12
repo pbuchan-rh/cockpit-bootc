@@ -16,7 +16,8 @@ function formatCountdown(nextRunMs, now) {
 }
 
 export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
-    const isChecked = status === 'active';
+    // status: { unitFileState, activeState, on } from getAutoUpdateStatus(), or null while unknown
+    const isChecked = !!status?.on;
     const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
@@ -34,7 +35,7 @@ export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
                     : _("Automatic updates")
             }
             isChecked={isChecked}
-            isDisabled={disabled || status === 'unknown'}
+            isDisabled={disabled || !status}
             onChange={(_event, checked) => onToggle(checked)}
         />
     );

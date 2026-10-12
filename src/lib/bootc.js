@@ -313,20 +313,35 @@ export async function reboot() {
     return manager.Reboot();
 }
 
+const AUTO_UPDATE_TIMER = "bootc-fetch-apply-updates.timer";
+
 /**
- * Get the auto-update timer state.
- * Returns "active", "inactive", or "unknown".
+ * Get the auto-update timer state: { unitFileState, activeState, on }.
+ *
+ * Reads both halves on purpose. RHEL bootc images enable the timer from
+ * /usr (default.target.wants), which `systemctl disable` can't remove, so a
+ * disabled timer is active again after every boot. Only a mask keeps it off,
+ * which is what setAutoUpdate(false) does. "On" therefore means running now
+ * and not masked; a masked timer is off even if something left it running.
+ * `systemctl show` (unlike is-enabled/is-active) exits 0 for every state.
  */
 export async function getAutoUpdateStatus() {
-    try {
-        const output = await cockpit.spawn(
-            ["systemctl", "is-active", "bootc-fetch-apply-updates.timer"],
-            { err: "ignore" }
-        );
-        return output.trim();
-    } catch {
-        return "inactive";
+    const output = await cockpit.spawn(
+        ["systemctl", "show", "--property=UnitFileState,ActiveState", AUTO_UPDATE_TIMER],
+        { err: "message" }
+    );
+    const props = {};
+    for (const line of output.split("\n")) {
+        const eq = line.indexOf("=");
+        if (eq > 0) props[line.slice(0, eq)] = line.slice(eq + 1);
     }
+    const unitFileState = props.UnitFileState || "";
+    const activeState = props.ActiveState || "";
+    return {
+        unitFileState,
+        activeState,
+        on: activeState === "active" && !unitFileState.startsWith("masked"),
+    };
 }
 
 /**
@@ -336,7 +351,7 @@ export async function getAutoUpdateStatus() {
 export async function getNextAutoUpdateRun() {
     try {
         const output = await cockpit.spawn(
-            ["systemctl", "list-timers", "bootc-fetch-apply-updates.timer", "--output=json", "--no-pager"],
+            ["systemctl", "list-timers", AUTO_UPDATE_TIMER, "--output=json", "--no-pager"],
             { err: "ignore" }
         );
         const [entry] = JSON.parse(output);
@@ -347,13 +362,29 @@ export async function getNextAutoUpdateRun() {
 }
 
 /**
- * Enable or disable the auto-update timer.
+ * Turn the auto-update timer on or off.
+ *
+ * Off is stop + mask: the mask links the unit to /dev/null in /etc, which
+ * outranks the image's own /usr enablement, so it stays off across reboots.
+ * Stop first, then mask: `mask --now` masks before stopping, the running timer
+ * loses its unit ("Unit to trigger vanished") and is left in the failed state,
+ * which the shell then reports as a failed service (seen live on RHEL 10,
+ * systemd 257). On is unmask + start; the image's /usr wants link
+ * (or an existing /etc one) starts it at boot. Only mask/unmask/start — this
+ * module never writes unit files or drop-ins for a unit bootc owns.
+ *
+ * The mask lives in /etc, and every deployment has its own /etc: rolling back
+ * boots another deployment with its own auto-update setting.
  */
-export function setAutoUpdate(enabled) {
-    return cockpit.spawn(
-        ["systemctl", enabled ? "enable" : "disable", "--now", "bootc-fetch-apply-updates.timer"],
-        { superuser: "require", err: "message" }
-    );
+export async function setAutoUpdate(enabled) {
+    const opts = { superuser: "require", err: "message" };
+    if (enabled) {
+        await cockpit.spawn(["systemctl", "unmask", AUTO_UPDATE_TIMER], opts);
+        await cockpit.spawn(["systemctl", "start", AUTO_UPDATE_TIMER], opts);
+    } else {
+        await cockpit.spawn(["systemctl", "stop", AUTO_UPDATE_TIMER], opts);
+        await cockpit.spawn(["systemctl", "mask", AUTO_UPDATE_TIMER], opts);
+    }
 }
 
 /**

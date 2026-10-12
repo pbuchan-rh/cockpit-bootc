@@ -71,7 +71,7 @@ export const App = () => {
     const [phase, setPhase] = useState(PHASE.IDLE);
     const [progress, setProgress] = useState([]);
     const [rebootModal, setRebootModal] = useState(null); // 'update' | 'rollback' | null
-    const [autoUpdateStatus, setAutoUpdateStatus] = useState('unknown');
+    const [autoUpdateStatus, setAutoUpdateStatus] = useState(null); // { unitFileState, activeState, on }, null = unknown
     const [nextAutoUpdateRun, setNextAutoUpdateRun] = useState(null); // epoch ms, or null if inactive/unscheduled
     const [checking, setChecking] = useState(false);
     const [updateAvailable, setUpdateAvailable] = useState(null);
@@ -336,21 +336,31 @@ export const App = () => {
     async function handleAutoUpdateToggle(enabled) {
         try {
             await setAutoUpdate(enabled);
-            setAutoUpdateStatus(enabled ? 'active' : 'inactive');
-            setNextAutoUpdateRun(enabled ? await getNextAutoUpdateRun() : null);
         } catch (ex) {
             setError(ex.message);
         }
+        // Re-read instead of assuming: the switch must show what systemd
+        // reports, including after a partial failure (e.g. unmask worked,
+        // start didn't).
+        try {
+            const autoUpdate = await getAutoUpdateStatus();
+            setAutoUpdateStatus(autoUpdate);
+            setNextAutoUpdateRun(autoUpdate.on ? await getNextAutoUpdateRun() : null);
+        } catch {
+            setAutoUpdateStatus(null);
+        }
     }
 
-    // Rollback only reorders local deployments — it doesn't touch the registry. If the
-    // auto-update timer is still enabled, its next scheduled run has no idea a human just
-    // deliberately rolled back to escape this exact image, and will silently re-stage and
-    // re-apply it again, undoing the rollback. Confirmed against the official RHEL image
-    // mode docs ("If you perform a rollback, the system will automatically update again
-    // unless you turn off auto-updates").
-    const autoUpdateWillUndoRollback = autoUpdateStatus === 'active' && (
-        <> {_("Automatic updates are currently")} <strong>{_("enabled")}</strong> {_("— the update timer has no way to know this was a deliberate rollback, so it will likely re-check, re-stage, and re-apply this same image again on its next scheduled run unless you turn off automatic updates first.")}</>
+    // Rollback only reorders local deployments; it doesn't touch the registry, so
+    // if the auto-update timer runs on the rolled-back system it re-applies the
+    // newer image and undoes the rollback (RHEL image mode docs: "If you perform a
+    // rollback, the system will automatically update again unless you turn off
+    // auto-updates"). Turning it off *here* doesn't help: the off switch is a mask
+    // in /etc, every deployment has its own /etc, and the rollback target boots
+    // with whatever auto-update setting its own /etc has. Say that, not "turn it
+    // off first". Verified live on 3.12 -> 3.11 -> 3.12 (see RELEASE-1.1.2.md).
+    const rollbackAutoUpdateNote = (
+        <> {_("The image you roll back to also has its own automatic-update setting, which may differ from this one. After the reboot, check the Automatic updates switch: if it is on, the next scheduled run can update the system again and undo the rollback.")}</>
     );
 
     if (loading) {
@@ -573,7 +583,7 @@ export const App = () => {
                         ? _("The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed.")
                         : rebootModal === 'overlay'
                             ? _("The system will reboot, discarding the transient /usr overlay and any changes made through it.")
-                            : <>{_("The system will reboot into the previous image.")} <strong>{_("This also reverts /etc to that image's frozen snapshot")}</strong> {_("— any configuration changes made since then will be lost, not merged or preserved.")}{autoUpdateWillUndoRollback}</>
+                            : <>{_("The system will reboot into the previous image.")} <strong>{_("This also reverts /etc to that image's frozen snapshot")}</strong> {_("— any configuration changes made since then will be lost, not merged or preserved.")}{rollbackAutoUpdateNote}</>
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -608,14 +618,14 @@ export const App = () => {
                     {confirmAction?.action === 'switch'
                         ? <>{_("The system will be reconfigured to track")} <code>{confirmAction.ref}</code> {_("and the image will be staged for next boot. Nothing is applied until you reboot.")}</>
                         : confirmAction?.action === 'autoupdate-enable'
-                            ? _("This system will automatically check for, download, apply, and reboot into new images on a recurring schedule (roughly every 8 hours), indefinitely, with no further confirmation. You won't be asked again before each reboot.")
+                            ? _("This system will automatically check for, download, apply, and reboot into new images on a recurring schedule, indefinitely, with no further confirmation. With the default timer, that is about 1 hour after each boot, then about 8 hours after each run, each with up to 2 hours of random delay. You won't be asked again before each reboot.")
                             : confirmAction?.action === 'cancel-staged'
                                 ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
                                 : confirmAction?.action === 'delete-deployment'
                                     ? <>{_("This permanently deletes")} <strong>{confirmAction.version || _("this deployment")}</strong> {_("and frees its disk space immediately. This cannot be undone — if you need it again, it must be re-pulled from the registry.")}</>
                                     : status?.staged
-                                        ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
-                                        : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{autoUpdateWillUndoRollback}</>
+                                        ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
+                                        : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
                     }
                 </ModalBody>
                 <ModalFooter>

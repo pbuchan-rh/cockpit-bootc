@@ -370,6 +370,13 @@ export const App = () => {
         <> {_("The image you roll back to also has its own automatic-update setting, which may differ from this one. After the reboot, check the Automatic updates switch: if it is on, the next scheduled run can update the system again and undo the rollback.")}</>
     );
 
+    // Name the delete target by ostree index and version: two rows can share a
+    // version (e.g. a rollback and an older off-slot deployment of the same
+    // image), so the version alone doesn't say which one goes.
+    const deleteTargetName = confirmAction?.action === 'delete-deployment' &&
+        cockpit.format(_("Deployment $0 ($1)"), confirmAction.index,
+                       confirmAction.version || confirmAction.checksum.slice(0, 12));
+
     if (loading) {
         return (
             <Page className="pf-m-no-sidebar">
@@ -443,7 +450,7 @@ export const App = () => {
                         variant="warning"
                         title={_("/usr has a transient overlay mounted")}
                         isInline
-                        actionClose={<Button variant="plain" onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
+                        actionClose={<Button variant="plain" aria-label={_("Dismiss overlay warning")} onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
                         actionLinks={
                             <AlertActionLink onClick={() => setRebootModal('overlay')}>
                                 {_("Reboot to Clear")}
@@ -618,7 +625,7 @@ export const App = () => {
                         confirmAction?.action === 'switch' ? _("Switch image?")
                             : confirmAction?.action === 'autoupdate-enable' ? _("Enable automatic updates?")
                                 : confirmAction?.action === 'cancel-staged' ? _("Discard staged update?")
-                                    : confirmAction?.action === 'delete-deployment' ? _("Delete deployment?")
+                                    : confirmAction?.action === 'delete-deployment' ? cockpit.format(_("Delete deployment $0?"), confirmAction.index)
                                         : _("Stage rollback?")
                     }
                 />
@@ -630,7 +637,10 @@ export const App = () => {
                             : confirmAction?.action === 'cancel-staged'
                                 ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
                                 : confirmAction?.action === 'delete-deployment'
-                                    ? <>{_("This permanently deletes")} <strong>{confirmAction.version || _("this deployment")}</strong> {_("and frees its disk space immediately. This cannot be undone — if you need it again, it must be re-pulled from the registry.")}</>
+                                    ? <>
+                                        <strong>{deleteTargetName}</strong>
+                                        {' '}{_("will be permanently deleted. Disk space is freed only for content no other deployment shares, so if another deployment has the same or a similar image, little or nothing may be freed. This cannot be undone: to use this image again, it has to be pulled from the registry again.")}
+                                    </>
                                     : status?.staged
                                         ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
                                         : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>

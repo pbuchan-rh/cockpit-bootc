@@ -1,6 +1,6 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
-require('dotenv').config({ path: __dirname + '/.env' });
+require('dotenv').config({ path: __dirname + '/.env', quiet: true });
 
 module.exports = defineConfig({
     testDir: __dirname,
@@ -11,6 +11,9 @@ module.exports = defineConfig({
     workers: 1,
     reporter: [
         ['html', { outputFolder: __dirname + '/report', open: 'never' }],
+        // Machine-readable pass/fail/skip counts (stats.expected/unexpected/skipped).
+        ['json', { outputFile: __dirname + '/test-results/results.json' }],
+        ['list'],
     ],
     use: {
         baseURL: process.env.COCKPIT_URL,

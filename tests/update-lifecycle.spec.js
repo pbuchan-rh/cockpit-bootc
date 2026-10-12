@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON } = require('./helpers/host.js');
 
 test.describe('update lifecycle', () => {
     test.beforeEach(async ({ page }) => {
@@ -31,6 +32,7 @@ test.describe('update lifecycle', () => {
     });
 
     test('Download Update stages a real update when one is available', async ({ page }) => {
+        test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
         await page.locator('button:has-text("Check for Updates")').click();
         await expect(page.locator('button:has-text("Checking")')).toHaveCount(0, { timeout: 30000 });
 

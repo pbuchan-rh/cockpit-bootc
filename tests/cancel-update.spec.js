@@ -1,22 +1,18 @@
 const { test, expect } = require('@playwright/test');
-const { execSync } = require('child_process');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, bootcStatus } = require('./helpers/host.js');
 
 // cancelStagedUpdate() works around bootc having no direct "discard the
 // stage" command by calling `bootc rollback` twice (a toggle) — verify the
 // real backend ends up clean, not just that the UI looks clean. Same
 // SSH-truth pattern as rollback.spec.js's getRealRollbackQueued().
 function getRealStatus() {
-    const hostname = process.env.COCKPIT_URL.replace(/^https?:\/\//, '').replace(/:.*$/, '');
-    const user = process.env.COCKPIT_USER;
-    const pass = process.env.COCKPIT_PASS;
-    const out = execSync(
-        `ssh -o StrictHostKeyChecking=no ${user}@${hostname} "echo '${pass}' | sudo -S bootc status --json 2>/dev/null"`
-    ).toString();
-    return JSON.parse(out).status;
+    return bootcStatus();
 }
 
 test.describe('cancel staged update', () => {
+    test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
+
     test.beforeEach(async ({ page }) => {
         await loginToCockpit(page);
         await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });

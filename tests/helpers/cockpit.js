@@ -4,7 +4,7 @@
 // only MODULE_PATH (and TABS, if the module has tabs) are module-specific.
 // See ~/Projects/cockpit/CLAUDE.md "Testing" section for the standard this
 // implements.
-require('dotenv').config({ path: __dirname + '/../.env' });
+require('dotenv').config({ path: __dirname + '/../.env', quiet: true });
 
 const COCKPIT_URL  = process.env.COCKPIT_URL  || 'https://your-host:9090';
 const COCKPIT_USER = process.env.COCKPIT_USER || 'admin';
@@ -14,7 +14,9 @@ const COCKPIT_PASS = process.env.COCKPIT_PASS || '';
 // so the module path is just /bootc/.
 const MODULE_PATH = '/cockpit/@localhost/bootc/index.html';
 
-async function loginToCockpit(page) {
+// url/modulePath default to the host under test (COCKPIT_URL) and this module;
+// status.spec.js's non-bootc check passes a second host.
+async function loginToCockpit(page, { url = COCKPIT_URL, modulePath = MODULE_PATH } = {}) {
     // waitUntil: 'networkidle' on the initial load, and a single direct
     // selector (not a list of fallbacks each burning a full timeout waiting
     // for an element that was never going to appear) — confirmed 2026-06-22
@@ -22,7 +24,7 @@ async function loginToCockpit(page) {
     // eventually clicking the right element, made elevation unreliable in a
     // way a flat 2s wait + this exact sequence does not. Don't reintroduce
     // the fallback-list shape without re-verifying end-to-end.
-    await page.goto(COCKPIT_URL, { waitUntil: 'networkidle' });
+    await page.goto(url, { waitUntil: 'networkidle' });
     await page.fill('#login-user-input', COCKPIT_USER);
     await page.fill('#login-password-input', COCKPIT_PASS);
     await page.click('#login-button');
@@ -38,7 +40,7 @@ async function loginToCockpit(page) {
     // Navigate directly to the module's iframe URL — this loads the module at
     // the top level (page is used directly, no frameLocator needed), the same
     // technique TESTING.md documents for manual verification.
-    await page.goto(COCKPIT_URL + MODULE_PATH);
+    await page.goto(url + modulePath);
     await page.waitForLoadState('domcontentloaded');
 }
 
@@ -46,10 +48,21 @@ async function requestAdmin(page) {
     const unlock = page.locator('button:has-text("Limited access"), button:has-text("Turn on administrative access")').first();
     await unlock.waitFor({ timeout: 5000 });
     await unlock.click();
+    // Two possible dialogs: a sudo password prompt, or, on hosts with
+    // NOPASSWD sudo, "You now have administrative access." with only a
+    // Close button. Wait for whichever appears first.
     const pwField = page.locator('#account-password-input, input[type="password"]').first();
-    await pwField.waitFor({ timeout: 5000 });
-    await pwField.fill(COCKPIT_PASS);
-    await page.locator('button:has-text("Authenticate"), button[type="submit"]').first().click();
+    const closeButton = page.locator('.pf-v6-c-modal-box button:has-text("Close")').first();
+    await Promise.race([
+        pwField.waitFor({ timeout: 10000 }),
+        closeButton.waitFor({ timeout: 10000 }),
+    ]);
+    if (await pwField.isVisible().catch(() => false)) {
+        await pwField.fill(COCKPIT_PASS);
+        await page.locator('button:has-text("Authenticate"), button[type="submit"]').first().click();
+    } else {
+        await closeButton.click();
+    }
     // Flat settle wait, not a poll/probe — confirmed 2026-06-22 that
     // repeatedly probing with a privileged spawn call to detect "is it ready
     // yet" makes things worse (overlapping spawn attempts mid-handshake left

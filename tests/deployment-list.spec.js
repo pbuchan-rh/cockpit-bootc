@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON } = require('./helpers/host.js');
 
 test.describe('deployment list', () => {
     test.beforeEach(async ({ page }) => {
@@ -29,6 +30,7 @@ test.describe('deployment list', () => {
     });
 
     test('Pin/Unpin round-trips, and Delete is gated to off-slot + unpinned rows only', async ({ page }) => {
+        test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
         const toggle = page.locator('button:has-text("deployments pinned")');
         await toggle.click();
 
@@ -44,6 +46,8 @@ test.describe('deployment list', () => {
         expect(offSlotRow, 'expected at least one off-slot deployment to test against').not.toBeNull();
 
         const deleteBtn = offSlotRow.locator('button:has-text("Delete")');
+        const offSlotIndex = (await offSlotRow.locator('td').nth(0).innerText()).trim();
+        const offSlotVersion = (await offSlotRow.locator('td').nth(1).innerText()).trim();
         const pinBtn = offSlotRow.locator('button').first();
         const wasPinned = (await pinBtn.innerText()) === 'Unpin';
 
@@ -75,10 +79,16 @@ test.describe('deployment list', () => {
         // confirm path itself was verified live by hand against the
         // appliance (not re-run here on purpose); see DESIGN.md / session
         // notes for that verification.
+        // The modal names the target by index and version (two rows can share
+        // a version) and doesn't promise disk space is freed immediately.
         await deleteBtn.click();
-        await expect(page.locator('text=Delete deployment?')).toBeVisible();
-        await page.locator('.pf-v6-c-modal-box button:has-text("Cancel")').click();
-        await expect(page.locator('text=Delete deployment?')).not.toBeVisible();
+        const modal = page.locator('.pf-v6-c-modal-box');
+        await expect(modal).toContainText(`Delete deployment ${offSlotIndex}?`);
+        await expect(modal).toContainText(`Deployment ${offSlotIndex} (${offSlotVersion})`);
+        await expect(modal).toContainText('freed only for content no other deployment shares');
+        await expect(modal).not.toContainText('frees its disk space immediately');
+        await modal.locator('button:has-text("Cancel")').click();
+        await expect(modal).not.toBeVisible();
         await expect(offSlotRow).toBeVisible();
 
         // Restore original pin state.

@@ -1,29 +1,23 @@
 const { test, expect } = require('@playwright/test');
-const { execSync } = require('child_process');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, hostSudo, bootcStatus } = require('./helpers/host.js');
 
-function sshHost() {
-    return process.env.COCKPIT_URL.replace(/^https?:\/\//, '').replace(/:.*$/, '');
-}
-
+// Creates a real transient /usr overlay on the host, which stays until the
+// next reboot (this spec never reboots). That changes what every other spec
+// sees until then, hence the BOOTC_DESTRUCTIVE opt-in.
 function setUsrOverlay() {
-    const user = process.env.COCKPIT_USER;
-    const pass = process.env.COCKPIT_PASS;
-    // Cheap to set up (no reboot needed) — the overlay only clears on the
-    // next real reboot, which this spec deliberately never triggers (see
-    // below), so this is harmless to leave in place between runs.
-    execSync(`ssh -o StrictHostKeyChecking=no ${user}@${sshHost()} "echo '${pass}' | sudo -S bootc usr-overlay 2>/dev/null"`);
+    hostSudo('bootc usr-overlay');
 }
 
 function hasUsrOverlay() {
-    const user = process.env.COCKPIT_USER;
-    const pass = process.env.COCKPIT_PASS;
-    const out = execSync(`ssh -o StrictHostKeyChecking=no ${user}@${sshHost()} "echo '${pass}' | sudo -S bootc status --json 2>/dev/null"`).toString();
-    return !!JSON.parse(out).status.usrOverlay;
+    return !!bootcStatus().usrOverlay;
 }
 
 test.describe('usr-overlay warning', () => {
+    test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
+
     test.beforeAll(() => {
+        if (!DESTRUCTIVE) return;
         if (!hasUsrOverlay()) setUsrOverlay();
     });
 
@@ -51,7 +45,7 @@ test.describe('usr-overlay warning', () => {
         await expect(page.locator('text=Reboot to clear /usr overlay?')).not.toBeVisible();
 
         // Dismiss (×) hides the warning without touching the overlay itself.
-        await warning.locator('button[aria-label="Close"], button.pf-v6-c-button.pf-m-plain').first().click();
+        await warning.getByRole('button', { name: 'Dismiss overlay warning' }).click();
         await expect(warning).not.toBeVisible({ timeout: 5000 });
     });
 });

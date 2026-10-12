@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginToCockpit } = require('./helpers/cockpit.js');
+const { loginToCockpit, MODULE_PATH } = require('./helpers/cockpit.js');
 
 test.describe('status', () => {
     test.beforeEach(async ({ page }) => {
@@ -55,5 +55,30 @@ test.describe('status', () => {
         // the "Administrative access required" empty state instead of real
         // status — this should never be visible after a successful login.
         await expect(page.locator('text=Administrative access required')).not.toBeVisible();
+    });
+});
+
+// H3: RHEL package-mode hosts ship the bootc binary too. The manifest
+// condition (/run/ostree-booted) must hide the module there, and if the page
+// is reached anyway it must show a plain empty state with no actions.
+// Needs a second, package-mode host: NOTBOOTC_URL=https://<host>:9090 (same
+// COCKPIT_USER/COCKPIT_PASS). NOTBOOTC_MODULE_PATH overrides where the page
+// is reached, for hosts where Cockpit refuses to serve a package whose
+// condition fails.
+test.describe('non-bootc host', () => {
+    const url = process.env.NOTBOOTC_URL;
+    test.skip(!url, 'set NOTBOOTC_URL to a package-mode host with cockpit-bootc installed');
+
+    test('is hidden from the menu, and reached directly shows only the not-bootc empty state', async ({ page }) => {
+        await loginToCockpit(page, { url, modulePath: '/system' });
+        await expect(page.locator('#host-apps, nav').first()).toContainText('Overview', { timeout: 15000 });
+        await expect(page.locator('#host-apps a:has-text("Image Updates"), nav a:has-text("Image Updates")')).toHaveCount(0);
+
+        await page.goto(url + (process.env.NOTBOOTC_MODULE_PATH || MODULE_PATH));
+        await expect(page.locator('#ct-not-bootc')).toBeVisible({ timeout: 15000 });
+        await expect(page.locator('#ct-not-bootc')).toContainText('Not a bootc system');
+        await expect(page.locator('button:has-text("Check for Updates")')).toHaveCount(0);
+        await expect(page.locator('#switch-image-ref')).toHaveCount(0);
+        await expect(page.locator('#bootc-auto-update-switch')).toHaveCount(0);
     });
 });

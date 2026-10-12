@@ -1,8 +1,10 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON } = require('./helpers/host.js');
 
 const ORIGINAL_REF = '10.0.0.208:5000/bootc-cockpit-demo:latest';
 const OTHER_TAG_REF = '10.0.0.208:5000/bootc-cockpit-demo:1.0';
+const MISSING_TAG_REF = '10.0.0.208:5000/bootc-cockpit-demo:does-not-exist';
 
 test.describe('switch image', () => {
     test.beforeEach(async ({ page }) => {
@@ -41,7 +43,24 @@ test.describe('switch image', () => {
         expect(copied).toMatch(/^sha256:[0-9a-f]{64}$/);
     });
 
+    test('a missing tag gets a one-line error, with the raw skopeo text under Show details', async ({ page }) => {
+        await page.fill('#switch-image-ref', MISSING_TAG_REF);
+        await page.locator('button:has-text("Inspect")').click();
+        await expect(page.locator('button:has-text("Inspecting")')).toHaveCount(0, { timeout: 20000 });
+
+        const error = page.locator('.ct-switch-preview-error');
+        await expect(error).toHaveText('Could not inspect image: Tag "does-not-exist" was not found in 10.0.0.208:5000/bootc-cockpit-demo.');
+        await expect(error).not.toContainText('level=fatal');
+
+        const raw = page.locator('.ct-error-details-text');
+        await expect(raw).not.toBeVisible();
+        await page.locator('button:has-text("Show details")').click();
+        await expect(raw).toContainText('manifest unknown');
+        await expect(page.locator('button:has-text("Switch")')).toBeDisabled();
+    });
+
     test('Switch stages the new image, then switching back restores original state', async ({ page }) => {
+        test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
         // --- Switch to the other tag ---
         await page.fill('#switch-image-ref', OTHER_TAG_REF);
         await page.locator('button:has-text("Inspect")').click();
@@ -51,6 +70,8 @@ test.describe('switch image', () => {
         await expect(page.locator('text=Switch image?')).toBeVisible();
         await page.locator('.pf-v6-c-modal-box button:has-text("Switch")').click();
         await expect(page.locator('button:has-text("Switching")')).toHaveCount(0, { timeout: 60000 });
+        // flock --verbose's own lines are filtered out of the shown log.
+        await expect(page.locator('#bootc-progress-log')).not.toContainText('flock:');
 
         await expect(page.locator(`code:has-text("${OTHER_TAG_REF}")`).first()).toBeVisible({ timeout: 15000 });
         const stagedCard = page.locator('.pf-v6-c-card', { has: page.locator('text=Staged Update') });

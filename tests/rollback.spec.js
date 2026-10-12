@@ -1,22 +1,18 @@
 const { test, expect } = require('@playwright/test');
-const { execSync } = require('child_process');
 const { loginToCockpit } = require('./helpers/cockpit.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, bootcStatus } = require('./helpers/host.js');
 
 // cockpit.spawn()'s return value doesn't serialize cleanly through
 // page.evaluate (it's not a plain native Promise) — verify real backend
 // state via direct SSH instead, matching the pattern already documented in
 // ../TESTING.md ("Verifying real bootc/server state directly").
 function getRealRollbackQueued() {
-    const hostname = process.env.COCKPIT_URL.replace(/^https?:\/\//, '').replace(/:.*$/, '');
-    const user = process.env.COCKPIT_USER;
-    const pass = process.env.COCKPIT_PASS;
-    const out = execSync(
-        `ssh -o StrictHostKeyChecking=no ${user}@${hostname} "echo '${pass}' | sudo -S bootc status --json 2>/dev/null"`
-    ).toString();
-    return JSON.parse(out).status.rollbackQueued;
+    return bootcStatus().rollbackQueued;
 }
 
 test.describe('rollback', () => {
+    test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
+
     test.beforeEach(async ({ page }) => {
         await loginToCockpit(page);
         await expect(page.locator('text=Container image reference')).toBeVisible({ timeout: 15000 });

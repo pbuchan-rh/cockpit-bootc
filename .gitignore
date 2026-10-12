@@ -30,3 +30,7 @@ tests/screenshots/
 tests/report/
 tests/test-results/
 test-results/
+
+# Build outputs from make dist / srpm / rpm
+/cockpit-bootc-*.tar.xz
+/*.rpm

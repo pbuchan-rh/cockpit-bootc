@@ -121,12 +121,33 @@ print-version:
 dist: $(TARFILE)
 	@ls -1 $(TARFILE)
 
+# Fail unless dist/ is a production build: compressed bundles present, no
+# uncompressed/unminified index.js, no source maps. RHEL/CentOS builds don't
+# rebuild the bundle (see rebuild_bundle in the spec), so whatever dist/ the
+# tarball carries is exactly what users get.
+check-dist:
+	@test -f dist/index.js.gz || { echo "check-dist: dist/index.js.gz missing (not a production build)" >&2; exit 1; }
+	@test -f dist/index.css.gz || { echo "check-dist: dist/index.css.gz missing (not a production build)" >&2; exit 1; }
+	@if [ -e dist/index.js ] || [ -e dist/index.css ]; then echo "check-dist: uncompressed dist/index.js or index.css present (development build)" >&2; exit 1; fi
+	@if ls dist/*.map >/dev/null 2>&1; then echo "check-dist: source maps in dist/ (development build)" >&2; exit 1; fi
+	@lines=$$(zcat dist/index.js.gz | wc -l); if [ "$$lines" -gt 200 ]; then echo "check-dist: index.js has $$lines lines, looks unminified" >&2; exit 1; fi
+	@test -d dist/assets || { echo "check-dist: dist/assets missing" >&2; exit 1; }
+	@echo "check-dist: OK (production bundle: index.js.gz $$(stat -c %s dist/index.js.gz) bytes, $$(find dist/assets -type f | wc -l) assets)"
+
 # when building a distribution tarball, call bundler with a 'production' environment
 # we don't ship node_modules for license and compactness reasons; we ship a
 # pre-built dist/ (so it's not necessary) and ship package-lock.json (so that
 # node_modules/ can be reconstructed if necessary)
+#
+# Always rebuild dist/ from scratch here: a dist/ left over from a plain `make`
+# (development build) also satisfies $(DIST_TEST), so depending on it alone
+# shipped an unminified, uncompressed bundle in 1.1.1. $(TARFILE) is .PHONY
+# for the same reason: an older tarball must never be reused.
 $(TARFILE): export NODE_ENV=production
 $(TARFILE): $(DIST_TEST) $(SPEC) packaging/arch/PKGBUILD
+	rm -rf dist/
+	./build.js
+	$(MAKE) check-dist
 	if type appstream-util >/dev/null 2>&1; then appstream-util validate-relax --nonet *.metainfo.xml; fi
 	tar --xz $(TAR_ARGS) -cf $(TARFILE) --transform 's,^,$(RPM_NAME)/,' \
 		--exclude packaging/$(SPEC).in --exclude node_modules \
@@ -160,6 +181,10 @@ rpm: $(TARFILE) $(NODE_CACHE) $(SPEC)
 	find `pwd`/output -name '*.rpm' -printf '%f\n' -exec mv {} . \;
 	rm -r "`pwd`/rpmbuild"
 	rm -r "`pwd`/output" "`pwd`/build"
+	rpm -qlp $(RPM_NAME)-$(VERSION)-*.noarch.rpm | grep -q '/bootc/index.js.gz$$' || \
+	  { echo "rpm: built package has no index.js.gz" >&2; exit 1; }
+	! rpm -qlp $(RPM_NAME)-$(VERSION)-*.noarch.rpm | grep -q '/bootc/index.js$$' || \
+	  { echo "rpm: built package ships an uncompressed index.js" >&2; exit 1; }
 
 # build a VM with locally built distro pkgs installed
 # disable networking, VM images have mock/pbuilder with the common build dependencies pre-installed
@@ -200,4 +225,4 @@ $(NODE_MODULES_TEST): package.json
 	for _ in `seq 3`; do timeout 10m env -u NODE_ENV npm install --ignore-scripts && exit 0; done; exit 1
 	env -u NODE_ENV npm prune
 
-.PHONY: all clean install devel-install devel-uninstall print-version dist node-cache rpm prepare-check check vm print-vm
+.PHONY: all clean install devel-install devel-uninstall print-version dist node-cache rpm prepare-check check vm print-vm check-dist $(TARFILE)

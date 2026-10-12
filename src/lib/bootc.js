@@ -68,6 +68,18 @@ const DOWNLOAD_INACTIVITY_TIMEOUT_MS = 120000;
 const TAG_CHECK_CONCURRENCY = 5;
 
 /**
+ * Whether this host is actually booted from a bootc/ostree image. The bootc
+ * binary alone isn't enough — RHEL package-mode systems ship it too, and there
+ * `bootc status` succeeds with booted: null. /run/ostree-booted is the same
+ * marker the manifest condition and bootc's own units check, and reading it
+ * needs no root, so this answers even before administrative access is on.
+ */
+export async function isOstreeBooted() {
+    const content = await cockpit.file(LOCK_FILE).read();
+    return content !== null;
+}
+
+/**
  * Get current bootc status.
  * Returns the parsed status object or throws on error.
  */

@@ -4,7 +4,7 @@
     },
 
     "conditions": [
-        { "path-exists": "/usr/bin/bootc" }
+        { "path-exists": "/run/ostree-booted" }
     ],
 
     "tools": {

@@ -5,6 +5,7 @@ import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Aler
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
+import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -31,6 +32,7 @@ import {
     deleteDeployment,
     getDeploymentList,
     getRepoDiskUsage,
+    isOstreeBooted,
 } from './lib/bootc.js';
 
 import { ImageStatus } from './components/ImageStatus.jsx';
@@ -90,6 +92,7 @@ export const App = () => {
     const [switchUnchanged, setSwitchUnchanged] = useState(false); // switch target matched the already-tracked ref
     const [lastChecked, setLastChecked] = useState(null); // Date of last successful check — in-memory only, resets on reload
     const [now, setNow] = useState(Date.now());
+    const [markerPresent, setMarkerPresent] = useState(null); // /run/ostree-booted exists; null = not checked yet
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
     const loadStatusIdRef = useRef(0); // guards against an older loadStatus() call's response landing after a newer one
 
@@ -150,7 +153,16 @@ export const App = () => {
         loadStatus(true);
     }, [loadStatus]);
 
+    useEffect(() => {
+        // An unreadable marker isn't proof of anything — fall back to what
+        // bootc status says (booted: null) instead of hiding the UI.
+        isOstreeBooted().then(setMarkerPresent).catch(() => setMarkerPresent(true));
+    }, []);
+
     const runCheckForUpdates = useCallback(async () => {
+        // Nothing to compare against without a booted image and a tracked
+        // ref — skopeo would otherwise resolve "null" against Docker Hub.
+        if (!trackedRef || !status?.booted) return;
         setChecking(true);
         setError(null);
         setUpdateAvailable(null); // hide the stale badge while this check is in flight
@@ -348,6 +360,28 @@ export const App = () => {
                     <Skeleton width="75%" screenreaderText={_("Loading image status")} />
                     <br />
                     <Skeleton width="50%" />
+                </PageSection>
+            </Page>
+        );
+    }
+
+    // RHEL package-mode hosts ship the bootc binary too; there `bootc status`
+    // succeeds with booted: null. The manifest condition hides the module on
+    // such hosts, but it can still be reached by URL, so render nothing
+    // actionable rather than a UI where every action is meaningless.
+    if (markerPresent === false || (status && !status.booted)) {
+        return (
+            <Page className="pf-m-no-sidebar">
+                <PageSection>
+                    <EmptyState
+                        id="ct-not-bootc"
+                        headingLevel="h1"
+                        titleText={_("Not a bootc system")}
+                    >
+                        <EmptyStateBody>
+                            {_("This system was not booted from a bootc container image, so there are no image updates or rollbacks to manage here.")}
+                        </EmptyStateBody>
+                    </EmptyState>
                 </PageSection>
             </Page>
         );

@@ -92,6 +92,32 @@ function watch_dirs(dir, on_change) {
     d.closeSync();
 }
 
+// esbuild leaves font/image url()s external, so the bundled CSS points at
+// ./assets/... files that never land in dist on their own. Copy exactly the
+// files the built CSS references from PatternFly's assets directory, rather
+// than the whole directory (wallpapers, demo logos, .scss sources), and fail
+// the build if a referenced file doesn't exist, so a PatternFly upgrade can't
+// silently add or break one. Cockpit's own ../../static/fonts are left alone.
+// Ported from cockpit-command-line-assistant's build.js.
+function copyReferencedAssets() {
+    const pfAssets = './node_modules/@patternfly/patternfly/assets';
+    const wanted = new Set();
+
+    for (const file of fs.readdirSync(outdir).filter(f => f.endsWith('.css'))) {
+        const css = fs.readFileSync(path.join(outdir, file), 'utf8');
+        for (const [, url] of css.matchAll(/url\(\s*["']?\.\/assets\/([^"')?#]+)/g))
+            wanted.add(url);
+    }
+
+    for (const rel of wanted) {
+        const src = path.join(pfAssets, rel);
+        if (!fs.existsSync(src))
+            throw new Error(`CSS references assets/${rel}, but ${src} does not exist`);
+        fs.mkdirSync(path.dirname(path.join(outdir, 'assets', rel)), { recursive: true });
+        fs.copyFileSync(src, path.join(outdir, 'assets', rel));
+    }
+}
+
 const context = await esbuild.context({
     ...!production ? { sourcemap: "linked" } : {},
     bundle: true,
@@ -122,6 +148,7 @@ const context = await esbuild.context({
                         const html = fs.readFileSync('./src/index.html', 'utf8')
                                 .replace(/\?v=\d+/g, `?v=${Date.now()}`);
                         fs.writeFileSync('./dist/index.html', html);
+                        copyReferencedAssets();
                     }
                 });
             }

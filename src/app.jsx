@@ -582,7 +582,7 @@ export const App = () => {
                         id="ct-image-ref-header"
                         actions={{
                             actions: (
-                                <Flex direction={{ default: 'column' }} alignItems={{ default: 'alignItemsFlexStart' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                <Flex direction={{ default: 'column' }} alignItems={{ default: 'alignItemsFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
                                     <FlexItem>
                                         <UpdateActions
                                             updateAvailable={updateAvailable}

@@ -459,16 +459,12 @@ export const App = () => {
     // in /etc, every deployment has its own /etc, and the rollback target boots
     // with whatever auto-update setting its own /etc has. Say that, not "turn it
     // off first". Verified live on 3.12 -> 3.11 -> 3.12 (see RELEASE-1.1.2.md).
-    const rollbackAutoUpdateNote = (
-        <> {_("The image you roll back to also has its own automatic-update setting, which may differ from this one. After the reboot, check the Automatic updates switch: if it is on, the next scheduled run can update the system again and undo the rollback.")}</>
+    // The why is in the README ("Rollback and /etc"); the dialogs say what to
+    // do. Shown in both steps: the reboot step can be reached without the
+    // first (a rollback queued from another session or the CLI).
+    const rollbackAutoUpdateHint = (
+        <p className="ct-modal-hint">{_("Automatic updates can undo a rollback: check the switch after the reboot.")}</p>
     );
-
-    // Name the delete target by ostree index and version: two rows can share a
-    // version (e.g. a rollback and an older off-slot deployment of the same
-    // image), so the version alone doesn't say which one goes.
-    const deleteTargetName = confirmAction?.action === 'delete-deployment' &&
-        cockpit.format(_("Deployment $0 ($1)"), confirmAction.index,
-                       confirmAction.version || confirmAction.checksum.slice(0, 12));
 
     // What a rollback goes back to, by name, in both the stage and the reboot
     // dialog: the version label bootc status reports for the rollback
@@ -477,6 +473,30 @@ export const App = () => {
     const rollbackTarget = status?.rollback
         ? (status.rollback.image?.version || (status.rollback.image?.imageDigest || '').replace(/^sha256:/, '').slice(0, 12))
         : null;
+
+    // Rollback dialog bodies. Step 1 (stage) also says when it discards a
+    // staged update; step 2 (reboot) repeats the /etc loss.
+    const rollbackStageBody = (
+        <>
+            <p>
+                {status?.staged && <>{cockpit.format(_("The staged update ($0) is discarded."), status.staged.image?.version || _("unknown version"))} </>}
+                {cockpit.format(_("$0 is staged for the next boot."), rollbackTarget)}
+                {' '}<strong>{cockpit.format(_("/etc goes back to $0's copy; changes made since are lost."), rollbackTarget)}</strong>
+            </p>
+            {rollbackAutoUpdateHint}
+        </>
+    );
+    const rollbackRebootBody = (
+        <>
+            <p>{cockpit.format(_("The system reboots into $0."), rollbackTarget)} <strong>{_("Changes to /etc made since then are lost.")}</strong></p>
+            {rollbackAutoUpdateHint}
+        </>
+    );
+
+    // The title names the delete target by ostree index (two rows can share
+    // a version); the body by version, or short checksum without one.
+    const deleteTargetName = confirmAction?.action === 'delete-deployment' &&
+        (confirmAction.version || confirmAction.checksum.slice(0, 12));
 
     if (loading) {
         return (
@@ -504,7 +524,7 @@ export const App = () => {
                         titleText={_("Not a bootc system")}
                     >
                         <EmptyStateBody>
-                            {_("This system was not booted from a bootc container image, so there are no image updates or rollbacks to manage here.")}
+                            {_("This system wasn't booted from a bootc image.")}
                         </EmptyStateBody>
                     </EmptyState>
                 </PageSection>
@@ -561,7 +581,7 @@ export const App = () => {
                 {status?.usrOverlay && !overlayWarningDismissed && (
                     <Alert
                         variant="warning"
-                        title={_("/usr has a transient overlay mounted")}
+                        title={_("/usr has a temporary overlay")}
                         isInline
                         actionClose={<Button variant="plain" aria-label={_("Dismiss overlay warning")} onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
                         actionLinks={
@@ -570,10 +590,7 @@ export const App = () => {
                             </AlertActionLink>
                         }
                     >
-                        {_("This system no longer matches its source image exactly — a writable overlay")}
-                        {' '}({status.usrOverlay.accessMode}, {status.usrOverlay.persistence}){' '}
-                        {_("is active on")} <code>/usr</code>, {_("likely from")} <code>bootc usr-overlay</code>.
-                        {' '}{_("It will be discarded on next reboot, but until then the running system has drifted from what's documented here.")}
+                        {_("Changes under /usr are lost at the next reboot.")}
                     </Alert>
                 )}
 
@@ -712,10 +729,10 @@ export const App = () => {
                 />
                 <ModalBody>
                     {rebootModal === 'update'
-                        ? _("The staged update will be applied. The system will reboot — a soft reboot will be used if the kernel has not changed.")
+                        ? _("The system reboots into the staged update.")
                         : rebootModal === 'overlay'
-                            ? _("The system will reboot, discarding the transient /usr overlay and any changes made through it.")
-                            : <>{_("The system will reboot into the previous image.")} <strong>{_("This also reverts /etc to that image's frozen snapshot")}</strong> {_("— any configuration changes made since then will be lost, not merged or preserved.")}{rollbackAutoUpdateNote}</>
+                            ? _("The system reboots and the /usr overlay is discarded.")
+                            : rollbackRebootBody
                     }
                 </ModalBody>
                 <ModalFooter>
@@ -752,21 +769,14 @@ export const App = () => {
                 />
                 <ModalBody>
                     {confirmAction?.action === 'switch'
-                        ? <>{_("The system will be reconfigured to track")} <code>{confirmAction.ref}</code> {_("and the image will be staged for next boot. Nothing is applied until you reboot.")}</>
+                        ? cockpit.format(_("Switch to $0? It downloads now and takes effect at the next reboot."), confirmAction.ref)
                         : confirmAction?.action === 'autoupdate-enable'
-                            ? _("This system will automatically check for, download, apply, and reboot into new images on a recurring schedule, indefinitely, with no further confirmation. With the default timer, that is about 1 hour after each boot, then about 8 hours after each run, each with up to 2 hours of random delay. You won't be asked again before each reboot.")
+                            ? _("This system will download and apply new images, and reboot, automatically, without asking.")
                             : confirmAction?.action === 'cancel-staged'
-                                ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
+                                ? _("The staged update is removed. Nothing reboots.")
                                 : confirmAction?.action === 'delete-deployment'
-                                    ? (
-                                        <>
-                                            <strong>{deleteTargetName}</strong>
-                                            {' '}{_("will be permanently deleted. Disk space is freed only for content no other deployment shares, so if another deployment has the same or a similar image, little or nothing may be freed. This cannot be undone: to use this image again, it has to be pulled from the registry again.")}
-                                        </>
-                                    )
-                                    : status?.staged
-                                        ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
-                                        : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
+                                    ? cockpit.format(_("$0 will be deleted from this system. This can't be undone."), deleteTargetName)
+                                    : rollbackStageBody
                     }
                 </ModalBody>
                 <ModalFooter>

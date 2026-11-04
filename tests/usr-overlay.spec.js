@@ -27,9 +27,9 @@ test.describe('usr-overlay warning', () => {
     });
 
     test('drift warning shows, dismisses, and Reboot to Clear opens the right confirmation', async ({ page }) => {
-        const warning = page.locator('.pf-v6-c-alert', { hasText: '/usr has a transient overlay mounted' });
+        const warning = page.locator('.pf-v6-c-alert', { hasText: '/usr has a temporary overlay' });
         await expect(warning).toBeVisible({ timeout: 15000 });
-        await expect(warning).toContainText('bootc usr-overlay');
+        await expect(warning).toContainText('Changes under /usr are lost at the next reboot.');
 
         const rebootToClear = warning.locator('button:has-text("Reboot to Clear")');
         await expect(rebootToClear).toBeVisible();
@@ -40,7 +40,7 @@ test.describe('usr-overlay warning', () => {
         // not something a routine regression run should trigger; Cancel
         // verifies the modal's wiring without paying that cost.
         await expect(page.locator('text=Reboot to clear /usr overlay?')).toBeVisible();
-        await expect(page.locator('text=discarding the transient', { exact: false })).toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('The system reboots and the /usr overlay is discarded.');
         await page.locator('.pf-v6-c-modal-box button:has-text("Cancel")').click();
         await expect(page.locator('text=Reboot to clear /usr overlay?')).not.toBeVisible();
 

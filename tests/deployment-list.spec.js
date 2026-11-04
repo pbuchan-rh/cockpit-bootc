@@ -79,13 +79,12 @@ test.describe('deployment list', () => {
         // confirm path itself was verified live by hand against the
         // appliance (not re-run here on purpose); see DESIGN.md / session
         // notes for that verification.
-        // The modal names the target by index and version (two rows can share
-        // a version) and doesn't promise disk space is freed immediately.
+        // The title names the target by index (two rows can share a version),
+        // the body by version, and says it can't be undone.
         await deleteBtn.click();
         const modal = page.locator('.pf-v6-c-modal-box');
         await expect(modal).toContainText(`Delete deployment ${offSlotIndex}?`);
-        await expect(modal).toContainText(`Deployment ${offSlotIndex} (${offSlotVersion})`);
-        await expect(modal).toContainText('freed only for content no other deployment shares');
+        await expect(modal.locator('.pf-v6-c-modal-box__body')).toHaveText(`${offSlotVersion} will be deleted from this system. This can't be undone.`);
         await expect(modal).not.toContainText('frees its disk space immediately');
         await modal.locator('button:has-text("Cancel")').click();
         await expect(modal).not.toBeVisible();

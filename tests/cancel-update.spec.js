@@ -35,7 +35,7 @@ test.describe('cancel staged update', () => {
 
         await stagedCard.locator('button:has-text("Cancel")').click();
         await expect(page.locator('text=Discard staged update?')).toBeVisible();
-        await expect(page.locator('text=No reboot happens, and the booted image is unaffected', { exact: false })).toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('The staged update is removed. Nothing reboots.');
         await page.locator('button:has-text("Discard")').click();
         await expect(stagedCard.locator('text=No update staged')).toBeVisible({ timeout: 15000 });
 

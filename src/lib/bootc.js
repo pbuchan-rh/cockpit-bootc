@@ -44,8 +44,8 @@ function registryErrorMessage(raw) {
     }
     if (/requested access to the resource is denied|unauthorized|authentication required/i.test(raw)) {
         return manifest
-            ? cockpit.format(_("The registry denied access to $0. The repository may not exist, or the registry needs credentials this system doesn't have."), manifest[2])
-            : _("The registry denied access to the image. The repository may not exist, or the registry needs credentials this system doesn't have.");
+            ? cockpit.format(_("The registry denied access to $0. Check the image name and the registry credentials."), manifest[2])
+            : _("The registry denied access to the image. Check the image name and the registry credentials.");
     }
     const host = registry ? registry[1] : _("the registry");
     if (/no such host/.test(raw)) {

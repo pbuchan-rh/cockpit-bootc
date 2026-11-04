@@ -81,10 +81,10 @@ test.describe('automatic updates', () => {
 
         // On: requires the explicit confirmation modal — enabling this is a
         // real unattended fetch+apply+reboot cycle, not just a periodic check.
-        // Its schedule text has to match the unit's defaults.
+        // It says the consequence: unattended reboots.
         await toggle.click({ force: true });
         await expect(page.locator('text=Enable automatic updates?')).toBeVisible();
-        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('about 1 hour after each boot, then about 8 hours after each run');
+        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('This system will download and apply new images, and reboot, automatically, without asking.');
         await page.locator('.pf-v6-c-modal-box button:has-text("Enable")').click();
         await expect(toggle).toBeChecked({ timeout: 10000 });
         const after = timerState();

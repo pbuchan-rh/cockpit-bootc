@@ -223,3 +223,10 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
+
+// One-line caveat under a dialog's body (the rollback auto-update hint).
+.ct-modal-hint {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}

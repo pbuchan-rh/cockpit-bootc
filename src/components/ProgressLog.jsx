@@ -11,8 +11,7 @@ const _ = cockpit.gettext;
 // is always looked up against the current locale, not whatever locale was
 // active when this module first loaded.
 function doneHintFor(kind) {
-    if (kind === 'download') return _('Download complete — staged below. Click "Apply and reboot" when you\'re ready to use it.');
-    if (kind === 'switch') return _('Switch complete — staged below. Click "Apply and reboot" when you\'re ready to use it.');
+    if (kind === 'download' || kind === 'switch') return _("Staged. Apply and reboot when ready.");
     return _("Done.");
 }
 

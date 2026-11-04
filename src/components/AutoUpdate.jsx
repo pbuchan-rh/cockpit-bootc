@@ -1,6 +1,8 @@
 import cockpit from 'cockpit';
 import React, { useState, useEffect } from 'react';
+import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Switch } from "@patternfly/react-core/dist/esm/components/Switch/index.js";
+import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 
 const _ = cockpit.gettext;
 
@@ -15,7 +17,7 @@ function formatCountdown(nextRunMs, now) {
     return cockpit.format(_("in ${0}h ${1}m"), hours, minutes);
 }
 
-export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
+export const AutoUpdate = ({ status, nextRun, onToggle, onKeepOff, disabled }) => {
     // status: { unitFileState, activeState, on } from getAutoUpdateStatus(), or null while unknown
     const isChecked = !!status?.on;
     const [now, setNow] = useState(Date.now());
@@ -26,7 +28,7 @@ export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
         return () => clearInterval(id);
     }, [nextRun]);
 
-    return (
+    const toggle = (
         <Switch
             id="bootc-auto-update-switch"
             label={
@@ -38,5 +40,20 @@ export const AutoUpdate = ({ status, nextRun, onToggle, disabled }) => {
             isDisabled={disabled || !status}
             onChange={(_event, checked) => onToggle(checked)}
         />
+    );
+
+    // Stopped but not masked (from the CLI, or 1.1.1's disable): off now,
+    // on again after the next boot. Say so, and offer the mask that keeps
+    // it off, which is what turning it off here does.
+    if (!status?.backAtBoot) return toggle;
+    return (
+        <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+            <FlexItem>{toggle}</FlexItem>
+            <FlexItem id="bootc-auto-update-hint" className="ct-auto-update-hint">
+                {_("Back on after reboot.")}
+                {' '}
+                <Button variant="link" isInline isDisabled={disabled} onClick={onKeepOff}>{_("Keep off")}</Button>
+            </FlexItem>
+        </Flex>
     );
 };

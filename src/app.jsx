@@ -595,6 +595,7 @@ export const App = () => {
                                             status={autoUpdateStatus}
                                             nextRun={nextAutoUpdateRun}
                                             onToggle={enabled => enabled ? setConfirmAction({ action: 'autoupdate-enable' }) : handleAutoUpdateToggle(false)}
+                                            onKeepOff={() => handleAutoUpdateToggle(false)}
                                             disabled={!adminAllowed}
                                         />
                                     </FlexItem>

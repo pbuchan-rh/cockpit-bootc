@@ -48,4 +48,10 @@ function timerState() {
     return { unitFileState: props.UnitFileState, activeState: props.ActiveState };
 }
 
-module.exports = { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, sshHost, hostSudo, bootcStatus, timerState };
+// The units that pull the timer in at boot (the image's /usr
+// default.target.wants link shows up here); empty when nothing does.
+function timerWantedBy() {
+    return ssh('systemctl show --property=WantedBy --value bootc-fetch-apply-updates.timer').trim();
+}
+
+module.exports = { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, sshHost, hostSudo, bootcStatus, timerState, timerWantedBy };

@@ -476,7 +476,7 @@ export async function reboot() {
 const AUTO_UPDATE_TIMER = "bootc-fetch-apply-updates.timer";
 
 /**
- * Get the auto-update timer state: { unitFileState, activeState, on }.
+ * Get the auto-update timer state: { unitFileState, activeState, on, backAtBoot }.
  *
  * Reads both halves on purpose. RHEL bootc images enable the timer from
  * /usr (default.target.wants), which `systemctl disable` can't remove, so a
@@ -484,10 +484,15 @@ const AUTO_UPDATE_TIMER = "bootc-fetch-apply-updates.timer";
  * which is what setAutoUpdate(false) does. "On" therefore means running now
  * and not masked; a masked timer is off even if something left it running.
  * `systemctl show` (unlike is-enabled/is-active) exits 0 for every state.
+ *
+ * backAtBoot: off now, but not masked and wanted by a boot target (WantedBy
+ * includes the image's /usr default.target.wants link), so the next boot
+ * starts it again. That is the state `systemctl stop`, or `disable` as 1.1.1
+ * did, leaves behind.
  */
 export async function getAutoUpdateStatus() {
     const output = await cockpit.spawn(
-        ["systemctl", "show", "--property=UnitFileState,ActiveState", AUTO_UPDATE_TIMER],
+        ["systemctl", "show", "--property=UnitFileState,ActiveState,WantedBy", AUTO_UPDATE_TIMER],
         { err: "message" }
     );
     const props = {};
@@ -497,10 +502,13 @@ export async function getAutoUpdateStatus() {
     }
     const unitFileState = props.UnitFileState || "";
     const activeState = props.ActiveState || "";
+    const masked = unitFileState.startsWith("masked");
+    const on = activeState === "active" && !masked;
     return {
         unitFileState,
         activeState,
-        on: activeState === "active" && !unitFileState.startsWith("masked"),
+        on,
+        backAtBoot: !on && !masked && (props.WantedBy || "").trim() !== "",
     };
 }
 

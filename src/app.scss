@@ -155,6 +155,11 @@
     --pf-v6-c-divider--Color: var(--pf-t--global--border--color--100);
 }
 
+.ct-auto-update-hint {
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
 .ct-auto-update-row {
     margin-block-start: var(--pf-t--global--spacer--sm);
 }

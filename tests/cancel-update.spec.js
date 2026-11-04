@@ -29,7 +29,7 @@ test.describe('cancel staged update', () => {
         await expect(page.locator('button:has-text("Downloading")')).toHaveCount(0, { timeout: 60000 });
 
         const stagedCard = page.locator('.pf-v6-c-card', { has: page.locator('text=Staged Update') });
-        await expect(stagedCard.locator('button:has-text("Apply & Reboot")')).toBeVisible();
+        await expect(stagedCard.locator('button:has-text("Apply and reboot")')).toBeVisible();
         expect(getRealStatus().staged).not.toBeNull();
 
         await stagedCard.locator('button:has-text("Cancel")').click();

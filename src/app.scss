@@ -94,10 +94,12 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-// Split the header into two equal-width halves and center each block as a
-// unit within its own half — but keep each block's own contents (title +
-// ref line, or buttons + toggle) left-justified relative to each other, so
-// only the block's outer position moves, not its internal text alignment.
+// Split the header into two equal-width halves. The title block starts at
+// the body's left edge and the actions block ends at its right edge, so the
+// header lines up with the switch row and the cards below (centering each
+// block in its half indented the title by 50-70 px, depending on the
+// length of the image ref). Each block's own contents (title + ref line, or
+// buttons + toggle) stay left-justified relative to each other.
 // Cockpit's shared card CSS sets justify-content: space-between via
 // `.pf-v6-c-card .pf-v6-c-card__header:not(.ct-card-expandable-header) ...`
 // and loads after this file, so a same-or-lower-specificity class override
@@ -108,7 +110,20 @@
 #ct-image-ref-header .pf-v6-c-card__header-main,
 #ct-image-ref-header .pf-v6-c-card__actions {
     flex: 1 1 50%;
-    justify-content: center;
+}
+
+// The header's inline padding is one spacer narrower than the body's
+// (measured: title at 48 px, divider and switch row at 72 px).
+#ct-image-ref-header {
+    padding-inline: var(--pf-t--global--spacer--lg);
+}
+
+#ct-image-ref-header .pf-v6-c-card__header-main {
+    justify-content: flex-start;
+}
+
+#ct-image-ref-header .pf-v6-c-card__actions {
+    justify-content: flex-end;
 }
 
 #ct-image-ref-header .pf-v6-c-card__title-text {

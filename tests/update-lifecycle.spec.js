@@ -44,7 +44,7 @@ test.describe('update lifecycle', () => {
 
         const stagedCard = page.locator('.pf-v6-c-card', { has: page.locator('text=Staged Update') });
         await expect(stagedCard.locator('text=No update staged')).not.toBeVisible();
-        await expect(stagedCard.locator('button:has-text("Apply & Reboot")')).toBeVisible();
+        await expect(stagedCard.locator('button:has-text("Apply and reboot")')).toBeVisible();
 
         // Clean up — discard the staged update so this test doesn't leave a
         // pending reboot behind for whatever runs next.

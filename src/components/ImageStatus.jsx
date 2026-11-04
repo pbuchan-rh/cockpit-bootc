@@ -158,7 +158,7 @@ export const ImageStatus = ({
             {/* Staged update */}
             <Card isFullHeight>
                 <CardTitle>
-                    <Label color="blue">{_("Staged Update")}</Label>
+                    <Label color="blue">{_("Staged update")}</Label>
                 </CardTitle>
                 <CardBody className={!stagedData ? "ct-card-body-centered" : undefined}>
                     {stagedData
@@ -179,7 +179,7 @@ export const ImageStatus = ({
                                     onClick={onConfirmUpdate}
                                     isDisabled={disabled || isBusy}
                                 >
-                                    {isRebooting ? <Spinner size="sm" /> : _("Apply & Reboot")}
+                                    {isRebooting ? <Spinner size="sm" /> : _("Apply and reboot")}
                                 </Button>
                             </FlexItem>
                             {stagedData && (
@@ -201,7 +201,7 @@ export const ImageStatus = ({
             {/* Rollback image */}
             <Card isFullHeight>
                 <CardTitle>
-                    <Label color="red">{_("Rollback")}</Label>
+                    <Label color="grey">{_("Rollback")}</Label>
                     {rollbackData?.pinned && !rollbackAmbiguous && (
                         <Label color="purple" style={{ marginLeft: '0.5rem' }}>{_("Pinned")}</Label>
                     )}
@@ -232,7 +232,7 @@ export const ImageStatus = ({
                                         onClick={onRollback}
                                         isDisabled={disabled || isBusy}
                                     >
-                                        {_("Roll Back")}
+                                        {_("Roll back")}
                                     </Button>
                                 </FlexItem>
                             )}
@@ -244,7 +244,7 @@ export const ImageStatus = ({
                                             onClick={onConfirmReboot}
                                             isDisabled={disabled || isRebooting}
                                         >
-                                            {isRebooting ? <Spinner size="sm" /> : _("Reboot to Roll Back")}
+                                            {isRebooting ? <Spinner size="sm" /> : _("Reboot to roll back")}
                                         </Button>
                                     </FlexItem>
                                     <FlexItem>

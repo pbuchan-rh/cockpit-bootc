@@ -543,7 +543,7 @@ export const App = () => {
                         actionClose={<Button variant="plain" aria-label={_("Dismiss overlay warning")} onClick={() => setOverlayWarningDismissed(true)}>×</Button>}
                         actionLinks={
                             <AlertActionLink onClick={() => setRebootModal('overlay')}>
-                                {_("Reboot to Clear")}
+                                {_("Reboot to clear")}
                             </AlertActionLink>
                         }
                     >
@@ -753,7 +753,7 @@ export const App = () => {
                             : confirmAction?.action === 'autoupdate-enable' ? _("Enable")
                                 : confirmAction?.action === 'cancel-staged' ? _("Discard")
                                     : confirmAction?.action === 'delete-deployment' ? _("Delete")
-                                        : _("Stage Rollback")}
+                                        : _("Stage rollback")}
                     </Button>
                     <Button variant="secondary" onClick={closeConfirmModal}>
                         {_("Cancel")}

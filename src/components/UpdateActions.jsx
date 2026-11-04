@@ -22,7 +22,7 @@ export const UpdateActions = ({
                     isDisabled={disabled || checking}
                     isLoading={checking}
                 >
-                    {checking ? _("Checking…") : _("Check for Updates")}
+                    {checking ? _("Checking…") : _("Check for updates")}
                 </Button>
             </FlexItem>
             <FlexItem>
@@ -32,7 +32,7 @@ export const UpdateActions = ({
                     isDisabled={disabled || checking || updateAvailable !== true}
                     isLoading={downloading}
                 >
-                    {downloading ? _("Downloading…") : _("Download Update")}
+                    {downloading ? _("Downloading…") : _("Download update")}
                 </Button>
             </FlexItem>
         </Flex>

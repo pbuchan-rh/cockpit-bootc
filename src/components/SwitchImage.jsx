@@ -66,7 +66,7 @@ export const SwitchImage = ({
                             isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
                             isLoading={previewing}
                         >
-                            {previewing ? _("Inspecting…") : (preview || previewError) ? _("Hide Inspection") : _("Inspect")}
+                            {previewing ? _("Inspecting…") : (preview || previewError) ? _("Hide inspection") : _("Inspect")}
                         </Button>
                     </FlexItem>
                     <FlexItem>

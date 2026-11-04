@@ -234,15 +234,10 @@ function progressFdUnsupported(text) {
     return /unexpected argument '--progress-fd'/.test(text);
 }
 
-/**
- * One progress event from bootc's JSON Lines stream, reduced to what the UI
- * shows: { task, description, bytes, bytesTotal, steps, stepsTotal }.
- * task is "pulling" (ProgressBytes: bytes/bytesTotal are what this pull
- * downloads, layers already on disk excluded; steps/stepsTotal are layers
- * fetched/needed), then "importing" and "staging" (ProgressSteps). Returns
- * null for anything else (the Start event, other JSON, unparsable text).
- */
-export function parseProgressEvent(line) {
+// A record of bootc's progress stream: a JSON object with a string "type"
+// (Start, ProgressBytes, ProgressSteps, or whatever a later API version adds).
+// null for bootc's own text lines.
+function progressRecord(line) {
     if (!line.startsWith("{")) return null;
     let ev;
     try {
@@ -250,6 +245,25 @@ export function parseProgressEvent(line) {
     } catch {
         return null;
     }
+    return typeof ev?.type === "string" ? ev : null;
+}
+
+// Every progress record, and a line that starts like one but doesn't parse
+// (a record cut short), stays out of the text log and the error details.
+function isProgressLine(line) {
+    return progressRecord(line) !== null || /^\{"type":/.test(line);
+}
+
+/**
+ * One progress event from bootc's JSON Lines stream, reduced to what the UI
+ * shows: { task, description, bytes, bytesTotal, steps, stepsTotal }.
+ * task is "pulling" (ProgressBytes: bytes/bytesTotal are what this pull
+ * downloads, layers already on disk excluded; steps/stepsTotal are layers
+ * fetched/needed), then "importing" and "staging" (ProgressSteps). Returns
+ * null for anything else (the Start record, other types, text).
+ */
+export function parseProgressEvent(line) {
+    const ev = progressRecord(line);
     if (ev?.type !== "ProgressBytes" && ev?.type !== "ProgressSteps") return null;
     return {
         task: ev.task,
@@ -262,14 +276,15 @@ export function parseProgressEvent(line) {
 }
 
 // cockpit's stream callback hands over arbitrary chunks, not lines. Buffer to
-// whole lines; send progress events to onEvent and everything else (minus
-// flock's own chatter) to onText.
+// whole lines; send progress events to onEvent, drop the other records (the
+// Start record, unknown types), and pass the rest (minus flock's own
+// chatter) to onText.
 function splitProgressStream(onText, onEvent) {
     let partial = "";
     const handle = line => {
-        const ev = parseProgressEvent(line);
-        if (ev) {
-            if (onEvent) onEvent(ev);
+        if (isProgressLine(line)) {
+            const ev = parseProgressEvent(line);
+            if (ev && onEvent) onEvent(ev);
             return;
         }
         const shown = stripFlockLines(line);
@@ -312,7 +327,7 @@ async function runPull(bootcArgv, onProgress, onEvent) {
             splitter.flush();
             if (useProgressFd && progressFdUnsupported(streamedText)) return attempt(false);
             // Keep the JSON progress lines out of the error details.
-            const text = streamedText.split("\n").filter(l => !parseProgressEvent(l))
+            const text = streamedText.split("\n").filter(l => !isProgressLine(l))
                     .join("\n");
             throw asFriendlyError(ex, text);
         } finally {

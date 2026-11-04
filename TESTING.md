@@ -18,7 +18,7 @@ A real, committed, assertion-based Playwright suite lives under `tests/`:
 | `switch-image.spec.js` | Inspect, copy digest, friendly "tag not found"; switch to `:1.0` and back | the switch |
 | `rollback-warning.spec.js` | rollback modal wording, both steps (target version, `/etc`, auto-update hint; step 2 and staged variant from a faked status) | no |
 | `modal-focus.spec.js` | focus after Cancel/Escape | no |
-| `deployment-list.spec.js` | versions in the table; pin/unpin, Delete modal | pin round-trip |
+| `deployment-list.spec.js` | versions in the table; pin/unpin (skips without an off-slot row); Delete modal text from a faked off-slot row | pin round-trip |
 | `auto-update.spec.js` | switch matches systemd; "back on after reboot" hint; Keep off and Off mask, On unmasks + starts | the toggle |
 | `rollback.spec.js` | stage + cancel a rollback, version in both dialogs, double click on Cancel | yes |
 | `cancel-update.spec.js` | Download then Discard leaves nothing queued | yes |

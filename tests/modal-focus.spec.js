@@ -19,9 +19,9 @@ test.describe('modal focus handling', () => {
         const rollBackBtn = rollbackCard.locator('button:has-text("Roll Back")');
 
         await rollBackBtn.click();
-        await expect(page.locator('text=Stage rollback?')).toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box', { hasText: /Roll back to .+\?/ })).toBeVisible();
         await page.locator('.pf-v6-c-modal-box button:has-text("Cancel")').click();
-        await expect(page.locator('text=Stage rollback?')).not.toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box', { hasText: /Roll back to .+\?/ })).not.toBeVisible();
 
         const isFocused = await rollBackBtn.evaluate(el => el === document.activeElement);
         expect(isFocused).toBe(false);
@@ -32,9 +32,9 @@ test.describe('modal focus handling', () => {
         const rollBackBtn = rollbackCard.locator('button:has-text("Roll Back")');
 
         await rollBackBtn.click();
-        await expect(page.locator('text=Stage rollback?')).toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box', { hasText: /Roll back to .+\?/ })).toBeVisible();
         await page.keyboard.press('Escape');
-        await expect(page.locator('text=Stage rollback?')).not.toBeVisible();
+        await expect(page.locator('.pf-v6-c-modal-box', { hasText: /Roll back to .+\?/ })).not.toBeVisible();
 
         const isFocused = await rollBackBtn.evaluate(el => el === document.activeElement);
         expect(isFocused).toBe(false);

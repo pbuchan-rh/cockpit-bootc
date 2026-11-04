@@ -230,7 +230,7 @@ export const App = () => {
         await runCheckForUpdates();
     }
 
-    async function handleDownloadUpdate() {
+    async function doDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
         setProgress([]);
         setPullEvent(null);
@@ -247,7 +247,7 @@ export const App = () => {
         }
     }
 
-    async function handleApplyUpdate() {
+    async function doApplyUpdate() {
         setRebootModal(null);
         setPhase(PHASE.REBOOTING);
         try {
@@ -258,7 +258,7 @@ export const App = () => {
         }
     }
 
-    async function handleRollback() {
+    async function doRollback() {
         setConfirmAction(null);
         setError(null);
         try {
@@ -270,7 +270,7 @@ export const App = () => {
         }
     }
 
-    async function handleTogglePin(slot, currentlyPinned) {
+    async function doTogglePin(slot, currentlyPinned) {
         setError(null);
         setPinningSlot(slot);
         try {
@@ -283,7 +283,7 @@ export const App = () => {
         }
     }
 
-    async function handleTogglePinByIndex(index, currentlyPinned, expectedChecksum) {
+    async function doTogglePinByIndex(index, currentlyPinned, expectedChecksum) {
         setError(null);
         setPinningIndex(index);
         try {
@@ -308,7 +308,7 @@ export const App = () => {
         setTimeout(() => document.activeElement?.blur(), 0);
     }
 
-    async function handleDeleteDeployment(index, expectedChecksum) {
+    async function doDeleteDeployment(index, expectedChecksum) {
         setConfirmAction(null);
         setError(null);
         setDeletingIndex(index);
@@ -322,7 +322,7 @@ export const App = () => {
         }
     }
 
-    async function handleCancelStagedUpdate() {
+    async function doCancelStagedUpdate() {
         setConfirmAction(null);
         setError(null);
         try {
@@ -334,7 +334,7 @@ export const App = () => {
         }
     }
 
-    async function handleReboot() {
+    async function doReboot() {
         setRebootModal(null);
         setPhase(PHASE.REBOOTING);
         try {
@@ -345,7 +345,7 @@ export const App = () => {
         }
     }
 
-    async function handleSwitchImage(ref) {
+    async function doSwitchImage(ref) {
         setConfirmAction(null);
         setSwitching(true);
         setError(null);
@@ -384,7 +384,7 @@ export const App = () => {
         }
     }
 
-    async function handleAutoUpdateToggle(enabled) {
+    async function doAutoUpdateToggle(enabled) {
         try {
             await setAutoUpdate(enabled);
         } catch (ex) {
@@ -401,6 +401,32 @@ export const App = () => {
             setAutoUpdateStatus(null);
         }
     }
+
+    // One host-changing operation at a time. Without this, a double click
+    // starts two: the rollback card's Cancel runs `bootc rollback` twice,
+    // which either fails on the lock (a red error for a click) or, if the
+    // first already finished, toggles the rollback straight back. A ref, not
+    // state, because both clicks of a double click see the same render.
+    const operationRef = useRef(false);
+    const exclusive = fn => async (...args) => {
+        if (operationRef.current) return;
+        operationRef.current = true;
+        try {
+            return await fn(...args);
+        } finally {
+            operationRef.current = false;
+        }
+    };
+    const handleDownloadUpdate = exclusive(doDownloadUpdate);
+    const handleApplyUpdate = exclusive(doApplyUpdate);
+    const handleRollback = exclusive(doRollback);
+    const handleTogglePin = exclusive(doTogglePin);
+    const handleTogglePinByIndex = exclusive(doTogglePinByIndex);
+    const handleDeleteDeployment = exclusive(doDeleteDeployment);
+    const handleCancelStagedUpdate = exclusive(doCancelStagedUpdate);
+    const handleReboot = exclusive(doReboot);
+    const handleSwitchImage = exclusive(doSwitchImage);
+    const handleAutoUpdateToggle = exclusive(doAutoUpdateToggle);
 
     // Rollback only reorders local deployments; it doesn't touch the registry, so
     // if the auto-update timer runs on the rolled-back system it re-applies the
@@ -420,6 +446,14 @@ export const App = () => {
     const deleteTargetName = confirmAction?.action === 'delete-deployment' &&
         cockpit.format(_("Deployment $0 ($1)"), confirmAction.index,
                        confirmAction.version || confirmAction.checksum.slice(0, 12));
+
+    // What a rollback goes back to, by name, in both the stage and the reboot
+    // dialog: the version label bootc status reports for the rollback
+    // deployment (it stays the target while the rollback is queued), or its
+    // short digest when the image has no version label.
+    const rollbackTarget = status?.rollback
+        ? (status.rollback.image?.version || (status.rollback.image?.imageDigest || '').replace(/^sha256:/, '').slice(0, 12))
+        : null;
 
     if (loading) {
         return (
@@ -647,7 +681,7 @@ export const App = () => {
                     title={
                         rebootModal === 'update' ? _("Apply update and reboot?")
                             : rebootModal === 'overlay' ? _("Reboot to clear /usr overlay?")
-                                : _("Reboot to roll back?")
+                                : rollbackTarget ? cockpit.format(_("Reboot to roll back to $0?"), rollbackTarget) : _("Reboot to roll back?")
                     }
                 />
                 <ModalBody>
@@ -683,7 +717,7 @@ export const App = () => {
                             : confirmAction?.action === 'autoupdate-enable' ? _("Enable automatic updates?")
                                 : confirmAction?.action === 'cancel-staged' ? _("Discard staged update?")
                                     : confirmAction?.action === 'delete-deployment' ? cockpit.format(_("Delete deployment $0?"), confirmAction.index)
-                                        : _("Stage rollback?")
+                                        : rollbackTarget ? cockpit.format(_("Roll back to $0?"), rollbackTarget) : _("Stage rollback?")
                     }
                 />
                 <ModalBody>

@@ -1,6 +1,6 @@
 {
   "name": "bootc",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Cockpit UI for managing bootc image updates and rollbacks",
   "type": "module",
   "main": "index.js",

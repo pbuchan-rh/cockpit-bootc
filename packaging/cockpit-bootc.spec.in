@@ -79,6 +79,18 @@ appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/metainfo/*
 %{_datadir}/metainfo/*
 
 %changelog
+* Wed Nov 04 2026 Peter Buchan <pjbuchanjr@gmail.com> - 1.2.0-1
+- Download and switch progress from bootc --progress-fd (bytes, layers,
+  steps); progress records never reach the text log
+- Check for updates once on page open (10 s cap, quiet on failure)
+- Limited access: empty state with the administrative-access button
+- Rollback dialogs name the target version; one operation at a time
+- Dialog copy trimmed: one short sentence each, no contractions
+- Sentence-case labels, neutral Rollback label, aligned header
+- Auto-update: "Back on after reboot" hint for a stopped timer, Keep off
+- Disk usage measured once after render and after store changes
+- ESLint 10 flat config; lint covers .jsx; GitHub Actions CI
+
 * Mon Oct 12 2026 Peter Buchan <pjbuchanjr@gmail.com> - 1.1.2-1
 - Automatic updates: Off now masks bootc-fetch-apply-updates.timer, so it
   stays off across reboots; On unmasks and starts it

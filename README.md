@@ -7,11 +7,11 @@ rollbacks.
 ## Features
 
 - **Image status** — booted, staged, and rollback state at a glance, with the actual tracked reference always labeled
-- **Check for updates, download, apply** — soft or full reboot as needed; see `GOTCHAS.md` for why this doesn't rely on `bootc upgrade --check`
-- **Roll back**, in either direction
+- **Check for updates, download, apply** — the check also runs once when the page opens, in the background, and fails quietly when the registry can't be reached; downloads show bytes and layers as they arrive (from `bootc --progress-fd`); soft or full reboot as needed; see `GOTCHAS.md` for why this doesn't rely on `bootc upgrade --check`
+- **Roll back**, in either direction; both steps name the version you go back to
 - **Switch images** — point at any registry/tag, preview version/digest/source before committing
 - **Cancel** a staged update or queued rollback cleanly — no reboot, no side effects
-- **Automatic updates** — turn `bootc-fetch-apply-updates.timer` on or off, with a confirmation before enabling unattended fetch+apply+reboot. Off masks the timer (`systemctl stop` + `mask`), because RHEL bootc images enable it from `/usr` and a plain `disable` comes back at the next boot; On unmasks and starts it. The setting lives in `/etc`, and every deployment has its own `/etc`, so after a rollback check the switch again
+- **Automatic updates** — turn `bootc-fetch-apply-updates.timer` on or off, with a confirmation before enabling unattended fetch+apply+reboot. Off masks the timer (`systemctl stop` + `mask`), because RHEL bootc images enable it from `/usr` and a plain `disable` comes back at the next boot; On unmasks and starts it. The setting lives in `/etc`, and every deployment has its own `/etc`, so after a rollback check the switch again. A timer that is stopped but not masked (from the command line, or by 1.1.1) shows as Off with "Back on after reboot" and a Keep off link that masks it
 - **Pin/unpin** any deployment (booted, rollback, or an older one that has rotated out of `bootc status`) against automatic garbage collection
 - **All deployments view** — every deployment ostree knows about, not just the 3 slots `bootc status` reports, plus combined image-store disk usage
 - **Delete** an unpinned deployment that is no longer booted, staged or the rollback (space is freed only for content no other deployment shares)
@@ -24,7 +24,7 @@ The module is intentionally stateless — no `/var/lib/cockpit-bootc/`, no setti
 
 ## Privilege model
 
-Every mutating action (update, rollback, switch, pin/unpin, auto-update toggle) requires Cockpit's admin-access permission, enforced via `{ superuser: "require" }` on the actual `bootc`/`ostree`/`systemctl` call — not just a disabled button. Read-only status queries need no elevation. See `SECURITY.md` for the full scope.
+Every mutating action (update, rollback, switch, pin/unpin, auto-update toggle) requires Cockpit's admin-access permission, enforced via `{ superuser: "require" }` on the actual `bootc`/`ostree`/`systemctl` call — not just a disabled button. `bootc status` itself needs root, so without administrative access the page shows only an empty state with the button that turns it on. See `SECURITY.md` for the full scope.
 
 ## Requirements
 

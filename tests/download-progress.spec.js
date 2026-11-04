@@ -8,15 +8,17 @@ const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, TIMER_ACTIVE_SKIP_REASON, timerAct
 // to download and bootc reports no byte progress at all: take the first
 // candidate the image store doesn't hold. A discarded stage leaves its image
 // in the store until bootc's next stage prunes it, so consecutive runs
-// alternate between candidates. PROGRESS_TAG_REF overrides the choice.
-const REPO = '10.0.0.208:5000/bootc-cockpit-demo';
-const CANDIDATE_TAGS = ['3.11', '3.10', '3.8'];
+// alternate between candidates, which are other tags of the repository the
+// host boots from (PROGRESS_TAGS, comma-separated, default below).
+// PROGRESS_TAG_REF overrides the choice entirely.
+const CANDIDATE_TAGS = (process.env.PROGRESS_TAGS || '3.11,3.10,3.8').split(',');
 
-function pickUncachedRef() {
+function pickUncachedRef(bootedRef) {
     if (process.env.PROGRESS_TAG_REF) return process.env.PROGRESS_TAG_REF;
+    const repo = bootedRef.replace(/:[^:/]+$/, '');
     const stored = hostSudo('ostree container image list --repo=/ostree/repo');
-    const tag = CANDIDATE_TAGS.find(t => !stored.includes(`${REPO}:${t}\n`));
-    return tag ? `${REPO}:${tag}` : null;
+    const tag = CANDIDATE_TAGS.find(t => !stored.includes(`${repo}:${t}\n`));
+    return tag ? `${repo}:${tag}` : null;
 }
 
 test.describe('download progress', () => {
@@ -36,7 +38,7 @@ test.describe('download progress', () => {
         // Staging GCs every unpinned deployment except the booted one; the
         // rollback must survive this test.
         expect(before.rollback?.pinned, 'pin the rollback deployment before running destructive specs').toBe(true);
-        const PULL_REF = pickUncachedRef();
+        const PULL_REF = pickUncachedRef(originalRef);
         expect(PULL_REF, 'every candidate tag is already in the image store').not.toBeNull();
 
         await page.fill('#switch-image-ref', PULL_REF);

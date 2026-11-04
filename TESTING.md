@@ -1,20 +1,25 @@
 # cockpit-bootc — Test suite + manual verification notes
 
 A real, committed, assertion-based Playwright suite lives under `tests/`:
-12 spec files, run against a live bootc host in both Chromium and Firefox.
+17 spec files, run against a live bootc host in both Chromium and Firefox.
 
 | Spec | Covers | Changes the host? |
 |---|---|---|
 | `status.spec.js` | cards, digests, copy buttons, admin unlocked; non-bootc host (`NOTBOOTC_URL`) | no |
-| `admin-gating.spec.js` | the view before admin access is on | no |
+| `admin-gating.spec.js` | the limited-access empty state; its button turns admin on and the status loads | no |
+| `auto-check.spec.js` | the update check runs on load; an unreachable or silent registry fails quietly within 10 s | no |
+| `visual.spec.js` | sentence case, neutral Rollback label, header lined up with the body | no |
+| `disk-usage.spec.js` | `du` runs once on load, not on a status refresh | pin round-trip |
+| `download-progress.spec.js` | switch to a tag not on disk shows bytes and layers downloaded | yes |
+| `perf.spec.js` | load timing (`BOOTC_PERF=1`), measures only | no |
 | `security.spec.js` | no `--tls-verify`, `isSafeUrl`, bad refs never reach the registry | no |
-| `update-lifecycle.spec.js` | Check for Updates badge; Download + discard | Download only |
+| `update-lifecycle.spec.js` | Check for updates badge; Download + discard | Download only |
 | `switch-image.spec.js` | Inspect, copy digest, friendly "tag not found"; switch to `:1.0` and back | the switch |
-| `rollback-warning.spec.js` | rollback modal wording (`/etc`, auto-update note) | no |
+| `rollback-warning.spec.js` | rollback modal wording (target version, `/etc`, auto-update note) | no |
 | `modal-focus.spec.js` | focus after Cancel/Escape | no |
 | `deployment-list.spec.js` | versions in the table; pin/unpin, Delete modal | pin round-trip |
-| `auto-update.spec.js` | switch matches systemd; Off masks, On unmasks + starts | the toggle |
-| `rollback.spec.js` | stage + cancel a rollback | yes |
+| `auto-update.spec.js` | switch matches systemd; "back on after reboot" hint; Keep off and Off mask, On unmasks + starts | the toggle |
+| `rollback.spec.js` | stage + cancel a rollback, version in both dialogs, double click on Cancel | yes |
 | `cancel-update.spec.js` | Download then Discard leaves nothing queued | yes |
 | `usr-overlay.spec.js` | drift warning; creates a transient `/usr` overlay | yes |
 
@@ -26,7 +31,17 @@ create a `/usr` overlay) is skipped unless you opt in:
 npm test                          # read-only checks only
 BOOTC_DESTRUCTIVE=1 npm test      # also the mutating tests
 NOTBOOTC_URL=https://<package-mode-host>:9090 npm test   # also the non-bootc check
+BOOTC_PERF=1 npx playwright test --config=tests/playwright.config.js perf.spec.js   # load timing
 ```
+
+**Stop the auto-update timer before a destructive run** (`systemctl stop
+bootc-fetch-apply-updates.timer`; start it again afterwards). Its service is
+`bootc upgrade --apply`: a run that finds anything staged applies it and
+reboots the host. The specs that stage (switch, download, discard, download
+progress) skip while the timer is active. Staging also garbage-collects
+unpinned deployments other than the booted one, so pin the rollback
+deployment for the run if it has to survive (`download-progress.spec.js`
+checks that it is pinned).
 
 The mutating tests clean up after themselves (discard what they stage, cancel
 the rollback, re-pin, turn auto-update back on) and check the result against
@@ -70,8 +85,9 @@ run (across all projects, not per-project) to a single worker, so `npm test`
 runs all of Chromium's tests, then all of Firefox's, one at a time — never
 both browsers hitting the shared live appliance/Cockpit session at once.
 
-There is no `tests/adhoc/` any more: the useful investigation scripts were
-turned into specs or dropped (2026-06-24).
+`tests/adhoc/` holds measuring and screenshot scripts with no real
+assertions (`header-alignment.spec.js`, `screenshots.spec.js`). They are left
+out of every normal run; `BOOTC_ADHOC=1` includes them.
 
 `tests/helpers/host.js` is the SSH side: `bootcStatus()`, `timerState()` and
 `hostSudo()`, which pipes `COCKPIT_PASS` to `sudo -S` on stdin. Never put the

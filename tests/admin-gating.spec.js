@@ -51,7 +51,7 @@ test.describe('admin gating', () => {
         await unlockButton(page).click({ timeout: 15000 });
 
         // A sudo password prompt, a "You now have administrative access."
-        // dialog with only a Close button, or (NOPASSWD sudo, seen on .229)
+        // dialog with only a Close button, or (NOPASSWD sudo, as on the test host)
         // no dialog left open at all.
         const gallery = page.locator('.ct-status-gallery');
         const pwField = page.locator('.pf-v6-c-modal-box input[type="password"]');

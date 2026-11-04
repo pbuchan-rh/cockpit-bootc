@@ -195,10 +195,24 @@ export async function getRepoDiskUsage() {
  * `bootc upgrade` (no --check) found content that --check missed.
  * Instead, compare a fresh skopeo inspect of the tracked reference
  * directly against the currently booted digest — no caching involved.
+ *
+ * Only the digest matters here, so --no-tags skips listing the repo's tags
+ * and this skips inspectImage()'s per-tag cross-check (up to 20 more skopeo
+ * calls). timeoutMs bounds the whole call; the automatic check on page load
+ * uses a short one so an unreachable registry gives up quickly.
  */
-export async function checkForUpdates(trackedRef, bootedDigest) {
-    const info = await inspectImage(trackedRef);
-    return info.digest !== bootedDigest;
+export async function checkForUpdates(trackedRef, bootedDigest, timeoutMs = INSPECT_TIMEOUT_MS) {
+    let output;
+    try {
+        output = await spawnWithTimeout(
+            ["skopeo", "inspect", "--no-tags", `docker://${trackedRef}`],
+            { err: "message" },
+            timeoutMs
+        );
+    } catch (ex) {
+        throw asFriendlyError(ex);
+    }
+    return JSON.parse(output).Digest !== bootedDigest;
 }
 
 // bootc (1.15 has it as a hidden option) writes machine-readable progress as

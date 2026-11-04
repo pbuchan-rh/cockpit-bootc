@@ -62,6 +62,11 @@ function errorFrom(title, ex) {
     return { title, message: ex?.message || String(ex), details: ex?.details || null };
 }
 
+// The automatic check on page load gives up after this long. It runs in the
+// background after the status cards render; an offline or air-gapped host
+// should not sit on a spinner.
+const AUTO_CHECK_TIMEOUT_MS = 10000;
+
 // Phases of the update/rollback lifecycle
 const PHASE = {
     IDLE: 'idle',
@@ -103,6 +108,8 @@ export const App = () => {
     const [markerPresent, setMarkerPresent] = useState(null); // /run/ostree-booted exists; null = not checked yet
     const switchRefRef = useRef(''); // live (non-stale) copy of SwitchImage's input value, updated on every keystroke
     const loadStatusIdRef = useRef(0); // guards against an older loadStatus() call's response landing after a newer one
+    const checkIdRef = useRef(0); // bumped by every check and every action that clears the badge; a stale check result is dropped
+    const autoCheckStartedRef = useRef(false); // the automatic check runs once per page open
 
     useEffect(() => {
         if (!lastChecked) return;
@@ -167,23 +174,45 @@ export const App = () => {
         isOstreeBooted().then(setMarkerPresent).catch(() => setMarkerPresent(true));
     }, []);
 
-    const runCheckForUpdates = useCallback(async () => {
+    // quiet: the automatic check on page load. It fails silently (offline,
+    // air-gapped, registry down, timeout): no error alert, just no badge.
+    const runCheckForUpdates = useCallback(async ({ quiet = false } = {}) => {
         // Nothing to compare against without a booted image and a tracked
         // ref — skopeo would otherwise resolve "null" against Docker Hub.
         if (!trackedRef || !status?.booted) return;
+        const checkId = ++checkIdRef.current;
+        const isCurrent = () => checkId === checkIdRef.current;
         setChecking(true);
-        setError(null);
+        if (!quiet) setError(null);
         setUpdateAvailable(null); // hide the stale badge while this check is in flight
         try {
-            const available = await checkForUpdates(trackedRef, status?.booted?.image?.imageDigest);
+            const available = await checkForUpdates(trackedRef, status.booted.image?.imageDigest,
+                                                     quiet ? AUTO_CHECK_TIMEOUT_MS : undefined);
+            if (!isCurrent()) return;
             setUpdateAvailable(available);
             setLastChecked(new Date());
         } catch (ex) {
-            setError(errorFrom(_("Checking for updates failed"), ex));
+            if (!quiet && isCurrent()) setError(errorFrom(_("Checking for updates failed"), ex));
         } finally {
-            setChecking(false);
+            if (isCurrent()) setChecking(false);
         }
     }, [trackedRef, status]);
+
+    // An action changed what is booted or staged: the badge no longer
+    // applies, and a check still in flight must not bring it back.
+    function clearUpdateCheck() {
+        checkIdRef.current++;
+        setUpdateAvailable(null);
+        setChecking(false);
+    }
+
+    // Once per page open, after the status cards have rendered: the same
+    // check as the button, in the background.
+    useEffect(() => {
+        if (autoCheckStartedRef.current || !trackedRef || !status?.booted) return;
+        autoCheckStartedRef.current = true;
+        runCheckForUpdates({ quiet: true });
+    }, [trackedRef, status, runCheckForUpdates]);
 
     async function handleCheckForUpdates() {
         await runCheckForUpdates();
@@ -199,7 +228,7 @@ export const App = () => {
             await stageUpdate(line => setProgress(p => [...p, line]), setPullEvent);
             await loadStatus();
             setPhase(PHASE.DOWNLOADED);
-            setUpdateAvailable(null);
+            clearUpdateCheck();
         } catch (ex) {
             setError(errorFrom(_("Downloading the update failed"), ex));
             setPhase(PHASE.IDLE);
@@ -223,7 +252,7 @@ export const App = () => {
         try {
             await stageRollback();
             await loadStatus(); // status.rollbackQueued now reflects this — no local flag needed
-            setUpdateAvailable(null);
+            clearUpdateCheck();
         } catch (ex) {
             setError(errorFrom(_("Rollback failed"), ex));
         }
@@ -318,7 +347,7 @@ export const App = () => {
         try {
             await switchImage(ref, line => setProgress(p => [...p, line]), setPullEvent);
             await loadStatus();
-            setUpdateAvailable(null);
+            clearUpdateCheck();
         } catch (ex) {
             setError(errorFrom(_("Switching image failed"), ex));
         } finally {

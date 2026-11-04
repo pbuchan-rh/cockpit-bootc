@@ -463,7 +463,7 @@ export const App = () => {
     // do. Shown in both steps: the reboot step can be reached without the
     // first (a rollback queued from another session or the CLI).
     const rollbackAutoUpdateHint = (
-        <p className="ct-modal-hint">{_("Automatic updates can undo a rollback: check the switch after the reboot.")}</p>
+        <p className="ct-modal-hint">{_("Automatic updates can undo a rollback. Check the setting after the reboot.")}</p>
     );
 
     // What a rollback goes back to, by name, in both the stage and the reboot
@@ -479,22 +479,22 @@ export const App = () => {
     const rollbackStageBody = (
         <>
             <p>
-                {status?.staged && <>{cockpit.format(_("The staged update ($0) is discarded."), status.staged.image?.version || _("unknown version"))} </>}
-                {cockpit.format(_("$0 is staged for the next boot."), rollbackTarget)}
-                {' '}<strong>{cockpit.format(_("/etc goes back to $0's copy; changes made since are lost."), rollbackTarget)}</strong>
+                {status?.staged && <>{cockpit.format(_("The staged update ($0) will be discarded."), status.staged.image?.version || _("unknown version"))} </>}
+                {cockpit.format(_("$0 will be staged for the next boot."), rollbackTarget)}
+                {' '}<strong>{cockpit.format(_("/etc will revert to $0's copy, and changes made since then will be lost."), rollbackTarget)}</strong>
             </p>
             {rollbackAutoUpdateHint}
         </>
     );
     const rollbackRebootBody = (
         <>
-            <p>{cockpit.format(_("The system reboots into $0."), rollbackTarget)} <strong>{_("Changes to /etc made since then are lost.")}</strong></p>
+            <p>{cockpit.format(_("The system will reboot into $0."), rollbackTarget)} <strong>{_("Changes to /etc made since then will be lost.")}</strong></p>
             {rollbackAutoUpdateHint}
         </>
     );
 
-    // The title names the delete target by ostree index (two rows can share
-    // a version); the body by version, or short checksum without one.
+    // The delete dialog names its target by version, or by short checksum
+    // when the image has no version label (title and body alike).
     const deleteTargetName = confirmAction?.action === 'delete-deployment' &&
         (confirmAction.version || confirmAction.checksum.slice(0, 12));
 
@@ -524,7 +524,7 @@ export const App = () => {
                         titleText={_("Not a bootc system")}
                     >
                         <EmptyStateBody>
-                            {_("This system wasn't booted from a bootc image.")}
+                            {_("This system was not booted from a bootc image.")}
                         </EmptyStateBody>
                     </EmptyState>
                 </PageSection>
@@ -590,7 +590,7 @@ export const App = () => {
                             </AlertActionLink>
                         }
                     >
-                        {_("Changes under /usr are lost at the next reboot.")}
+                        {_("Changes under /usr will be lost at the next reboot.")}
                     </Alert>
                 )}
 
@@ -729,9 +729,9 @@ export const App = () => {
                 />
                 <ModalBody>
                     {rebootModal === 'update'
-                        ? _("The system reboots into the staged update.")
+                        ? _("The system will reboot into the staged update.")
                         : rebootModal === 'overlay'
-                            ? _("The system reboots and the /usr overlay is discarded.")
+                            ? _("The system will reboot and discard the /usr overlay.")
                             : rollbackRebootBody
                     }
                 </ModalBody>
@@ -763,7 +763,7 @@ export const App = () => {
                                 : confirmAction?.action === 'cancel-staged'
                                     ? _("Discard staged update?")
                                     : confirmAction?.action === 'delete-deployment'
-                                        ? cockpit.format(_("Delete deployment $0?"), confirmAction.index)
+                                        ? cockpit.format(_("Delete $0?"), deleteTargetName)
                                         : rollbackTarget ? cockpit.format(_("Roll back to $0?"), rollbackTarget) : _("Stage rollback?")
                     }
                 />
@@ -771,11 +771,11 @@ export const App = () => {
                     {confirmAction?.action === 'switch'
                         ? cockpit.format(_("Switch to $0? It downloads now and takes effect at the next reboot."), confirmAction.ref)
                         : confirmAction?.action === 'autoupdate-enable'
-                            ? _("This system will download and apply new images, and reboot, automatically, without asking.")
+                            ? _("New images will be downloaded and applied automatically, and the system will reboot without asking.")
                             : confirmAction?.action === 'cancel-staged'
-                                ? _("The staged update is removed. Nothing reboots.")
+                                ? _("The staged update will be removed. The system will not reboot.")
                                 : confirmAction?.action === 'delete-deployment'
-                                    ? cockpit.format(_("$0 will be deleted from this system. This can't be undone."), deleteTargetName)
+                                    ? cockpit.format(_("$0 will be deleted from this system. This cannot be undone."), deleteTargetName)
                                     : rollbackStageBody
                     }
                 </ModalBody>

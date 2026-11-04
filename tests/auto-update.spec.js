@@ -84,7 +84,7 @@ test.describe('automatic updates', () => {
         // It says the consequence: unattended reboots.
         await toggle.click({ force: true });
         await expect(page.locator('text=Enable automatic updates?')).toBeVisible();
-        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('This system will download and apply new images, and reboot, automatically, without asking.');
+        await expect(page.locator('.pf-v6-c-modal-box')).toContainText('New images will be downloaded and applied automatically, and the system will reboot without asking.');
         await page.locator('.pf-v6-c-modal-box button:has-text("Enable")').click();
         await expect(toggle).toBeChecked({ timeout: 10000 });
         const after = timerState();

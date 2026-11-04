@@ -76,7 +76,7 @@ export const DeploymentList = ({ deployments, versionByChecksum, diskUsage, pinn
                                             ? (
                                                 <Tooltip
                                                     content={d.slot !== null
-                                                        ? _("Can't delete a deployment in active use")
+                                                        ? _("Cannot delete a deployment in active use")
                                                         : _("Unpin before deleting")}
                                                 >
                                                     <Button

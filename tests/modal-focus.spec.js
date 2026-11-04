@@ -57,9 +57,9 @@ test.describe('modal focus handling', () => {
 
         const before = await deleteBtn.evaluate(el => getComputedStyle(el).backgroundColor);
         await deleteBtn.click();
-        await expect(page.locator('text=/Delete deployment \\d+\\?/')).toBeVisible();
+        await expect(page.locator('text=/^Delete .+\\?$/')).toBeVisible();
         await page.locator('.pf-v6-c-modal-box button:has-text("Cancel")').click();
-        await expect(page.locator('text=/Delete deployment \\d+\\?/')).not.toBeVisible();
+        await expect(page.locator('text=/^Delete .+\\?$/')).not.toBeVisible();
 
         const after = await deleteBtn.evaluate(el => getComputedStyle(el).backgroundColor);
         expect(after).toBe(before);

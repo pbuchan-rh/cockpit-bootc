@@ -3,7 +3,7 @@ const { loginToCockpit, COCKPIT_URL, MODULE_PATH } = require('./helpers/cockpit.
 const { bootcStatus, hostSudo } = require('./helpers/host.js');
 const { fakeSpawns, PRINT } = require('./helpers/fake-spawn.js');
 
-const AUTO_UPDATE_HINT = 'Automatic updates can undo a rollback: check the switch after the reboot.';
+const AUTO_UPDATE_HINT = 'Automatic updates can undo a rollback. Check the setting after the reboot.';
 const rollbackName = target => target.image.version || target.image.imageDigest.replace(/^sha256:/, '').slice(0, 12);
 
 test.describe('rollback confirm warnings', () => {
@@ -18,7 +18,7 @@ test.describe('rollback confirm warnings', () => {
 
         const modal = page.locator('.pf-v6-c-modal-box', { hasText: /Roll back to .+\?/ });
         await expect(modal).toBeVisible();
-        await expect(modal.locator('strong')).toHaveText(/^\/etc goes back to .+'s copy; changes made since are lost\.$/);
+        await expect(modal.locator('strong')).toHaveText(/^\/etc will revert to .+'s copy, and changes made since then will be lost\.$/);
 
         // Never actually confirm — staging a real rollback isn't needed to
         // verify the modal's wording, and rollback.spec.js already covers
@@ -73,8 +73,8 @@ test.describe('rollback confirm warnings', () => {
         await rollbackCard.locator('button:has-text("Reboot to roll back")').click();
         const modal = page.locator('.pf-v6-c-modal-box');
         await expect(modal.locator('.pf-v6-c-modal-box__title')).toHaveText(`Reboot to roll back to ${name}?`);
-        await expect(modal.locator('strong')).toHaveText('Changes to /etc made since then are lost.');
-        await expect(modal).toContainText(`The system reboots into ${name}.`);
+        await expect(modal.locator('strong')).toHaveText('Changes to /etc made since then will be lost.');
+        await expect(modal).toContainText(`The system will reboot into ${name}.`);
         await expect(modal).toContainText(AUTO_UPDATE_HINT);
         await modal.locator('button:has-text("Cancel")').click();
         await expect(modal).toHaveCount(0);
@@ -96,7 +96,7 @@ test.describe('rollback confirm warnings', () => {
         await rollbackCard.locator('button:has-text("Roll back")').click();
         const modal = page.locator('.pf-v6-c-modal-box');
         await expect(modal.locator('.pf-v6-c-modal-box__body p').first())
-                .toHaveText(`The staged update (9.99) is discarded. ${name} is staged for the next boot. /etc goes back to ${name}'s copy; changes made since are lost.`);
+                .toHaveText(`The staged update (9.99) will be discarded. ${name} will be staged for the next boot. /etc will revert to ${name}'s copy, and changes made since then will be lost.`);
         await expect(modal).toContainText(AUTO_UPDATE_HINT);
         await modal.locator('button:has-text("Cancel")').click();
         await expect(modal).toHaveCount(0);

@@ -151,7 +151,6 @@ export const App = () => {
         getAutoUpdateStatus().then(v => { if (!isStale()) setAutoUpdateStatus(v); }).catch(() => {});
         getNextAutoUpdateRun().then(v => { if (!isStale()) setNextAutoUpdateRun(v); }).catch(() => {});
         getDeploymentList().then(v => { if (!isStale()) setDeployments(v); }).catch(() => {});
-        getRepoDiskUsage().then(v => { if (!isStale()) setDiskUsage(v); }).catch(() => {});
 
         try {
             const s = await getStatus();
@@ -170,6 +169,23 @@ export const App = () => {
     useEffect(() => {
         loadStatus(true);
     }, [loadStatus]);
+
+    // `du -sh /ostree/repo` walks every object in the image store (about
+    // 100k files on the demo host), so it runs once, after the first status
+    // render, and again only after operations that change the store
+    // (download, switch, discard, delete), not on every status refresh. df
+    // would be cheaper but measures the whole filesystem (/var included),
+    // not the image store.
+    const diskUsageStartedRef = useRef(false);
+    const refreshDiskUsage = useCallback(() => {
+        getRepoDiskUsage().then(setDiskUsage)
+                .catch(() => {});
+    }, []);
+    useEffect(() => {
+        if (diskUsageStartedRef.current || !status?.booted) return;
+        diskUsageStartedRef.current = true;
+        refreshDiskUsage();
+    }, [status, refreshDiskUsage]);
 
     // Administrative access turned on after the page loaded (the button in
     // the limited-access empty state, or the shell's own): load what the
@@ -245,6 +261,7 @@ export const App = () => {
             setError(errorFrom(_("Downloading the update failed"), ex));
             setPhase(PHASE.IDLE);
         }
+        refreshDiskUsage(); // a failed pull can still have stored layers
     }
 
     async function doApplyUpdate() {
@@ -315,6 +332,7 @@ export const App = () => {
         try {
             await deleteDeployment(index, expectedChecksum);
             await loadStatus();
+            refreshDiskUsage();
         } catch (ex) {
             setError(errorFrom(_("Deleting the deployment failed"), ex));
         } finally {
@@ -329,6 +347,7 @@ export const App = () => {
             await cancelStagedUpdate();
             await loadStatus();
             setPhase(PHASE.IDLE); // handleDownloadUpdate may have left phase stuck at DOWNLOADED
+            refreshDiskUsage();
         } catch (ex) {
             setError(errorFrom(_("Discarding the staged update failed"), ex));
         }
@@ -364,6 +383,7 @@ export const App = () => {
             setError(errorFrom(_("Switching image failed"), ex));
         } finally {
             setSwitching(false);
+            refreshDiskUsage(); // a failed pull can still have stored layers
         }
     }
 

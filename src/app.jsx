@@ -13,6 +13,9 @@ import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Pa
 import { Skeleton } from "@patternfly/react-core/dist/esm/components/Skeleton/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
+import { LockIcon } from "@patternfly/react-icons/dist/esm/icons/lock-icon.js";
+import { EmptyStatePanel } from "cockpit-components-empty-state";
+import { SuperuserButton } from "superuser-dialogs";
 
 import {
     getStatus,
@@ -167,6 +170,15 @@ export const App = () => {
     useEffect(() => {
         loadStatus(true);
     }, [loadStatus]);
+
+    // Administrative access turned on after the page loaded (the button in
+    // the limited-access empty state, or the shell's own): load what the
+    // first, unprivileged attempt couldn't.
+    const prevAdminAllowedRef = useRef(adminAllowed);
+    useEffect(() => {
+        if (adminAllowed && !prevAdminAllowedRef.current) loadStatus();
+        prevAdminAllowedRef.current = adminAllowed;
+    }, [adminAllowed, loadStatus]);
 
     useEffect(() => {
         // An unreadable marker isn't proof of anything — fall back to what
@@ -443,6 +455,24 @@ export const App = () => {
         );
     }
 
+    // bootc status needs root. Without administrative access there is nothing
+    // to show, so do what Cockpit's own pages do: an empty state with the
+    // button that turns administrative access on.
+    if (!status && !adminAllowed) {
+        return (
+            <Page className="pf-m-no-sidebar">
+                <PageSection>
+                    <EmptyStatePanel
+                        icon={LockIcon}
+                        title={_("Administrative access required")}
+                        paragraph={_("Image updates need administrative access.")}
+                        action={<SuperuserButton />}
+                    />
+                </PageSection>
+            </Page>
+        );
+    }
+
     // ostree's own deployment list (used for the full table below) only has
     // checksums, not human-readable versions — cross-reference by checksum
     // against everything bootc status knows a version for: the 3 named slots,
@@ -459,7 +489,7 @@ export const App = () => {
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
-                {error && !(!status && !adminAllowed) && (
+                {error && (
                     <Alert
                         variant="danger"
                         title={error.title}
@@ -468,12 +498,6 @@ export const App = () => {
                     >
                         {error.message}
                         <ErrorDetails details={error.details} />
-                    </Alert>
-                )}
-
-                {!status && !adminAllowed && (
-                    <Alert variant="info" title={_("Administrative access required")} isInline>
-                        {_('bootc requires root to query image status. Unlock "Administrative access" above to view and manage updates.')}
                     </Alert>
                 )}
 

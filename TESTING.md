@@ -11,11 +11,12 @@ A real, committed, assertion-based Playwright suite lives under `tests/`:
 | `visual.spec.js` | sentence case, neutral Rollback label, header lined up with the body | no |
 | `disk-usage.spec.js` | `du` runs once on load, not on a status refresh | pin round-trip |
 | `download-progress.spec.js` | switch to a tag not on disk shows bytes and layers downloaded | yes |
+| `progress-stream.spec.js` | progress JSON records (Start, unknown types, lines split across chunks) never reach the log; faked switch | no |
 | `perf.spec.js` | load timing (`BOOTC_PERF=1`), measures only | no |
 | `security.spec.js` | no `--tls-verify`, `isSafeUrl`, bad refs never reach the registry | no |
 | `update-lifecycle.spec.js` | Check for updates badge; Download + discard | Download only |
 | `switch-image.spec.js` | Inspect, copy digest, friendly "tag not found"; switch to `:1.0` and back | the switch |
-| `rollback-warning.spec.js` | rollback modal wording (target version, `/etc`, auto-update note) | no |
+| `rollback-warning.spec.js` | rollback modal wording, both steps (target version, `/etc`, auto-update hint; step 2 and staged variant from a faked status) | no |
 | `modal-focus.spec.js` | focus after Cancel/Escape | no |
 | `deployment-list.spec.js` | versions in the table; pin/unpin, Delete modal | pin round-trip |
 | `auto-update.spec.js` | switch matches systemd; "back on after reboot" hint; Keep off and Off mask, On unmasks + starts | the toggle |
@@ -86,8 +87,16 @@ runs all of Chromium's tests, then all of Firefox's, one at a time — never
 both browsers hitting the shared live appliance/Cockpit session at once.
 
 `tests/adhoc/` holds measuring and screenshot scripts with no real
-assertions (`header-alignment.spec.js`, `screenshots.spec.js`). They are left
-out of every normal run; `BOOTC_ADHOC=1` includes them.
+assertions (`header-alignment.spec.js`, `screenshots.spec.js`,
+`copy-shots.spec.js`: one cropped screenshot + text per dialog/alert, for
+before/after copy reviews). They are left out of every normal run;
+`BOOTC_ADHOC=1` includes them.
+
+`tests/helpers/fake-spawn.js` shows the page states the host isn't in (a
+staged update, a queued rollback, a registry error, a progress stream) by
+rewriting a spawn's argv in Cockpit's WebSocket "open" message to a
+`printf`; nothing runs on the host, and any host-changing spawn no rule
+matches is blocked.
 
 `tests/helpers/host.js` is the SSH side: `bootcStatus()`, `timerState()` and
 `hostSudo()`, which pipes `COCKPIT_PASS` to `sudo -S` on stdin. Never put the

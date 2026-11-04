@@ -14,13 +14,50 @@ rollbacks.
 - **Automatic updates** — turn `bootc-fetch-apply-updates.timer` on or off, with a confirmation before enabling unattended fetch+apply+reboot. Off masks the timer (`systemctl stop` + `mask`), because RHEL bootc images enable it from `/usr` and a plain `disable` comes back at the next boot; On unmasks and starts it. The setting lives in `/etc`, and every deployment has its own `/etc`, so after a rollback check the switch again. A timer that is stopped but not masked (from the command line, or by 1.1.1) shows as Off with "Back on after reboot" and a Keep off link that masks it
 - **Pin/unpin** any deployment (booted, rollback, or an older one that has rotated out of `bootc status`) against automatic garbage collection
 - **All deployments view** — every deployment ostree knows about, not just the 3 slots `bootc status` reports, plus combined image-store disk usage
-- **Delete** an unpinned deployment that is no longer booted, staged or the rollback (space is freed only for content no other deployment shares)
+- **Delete** an unpinned deployment that is no longer booted, staged or the rollback (space is freed only for content no other deployment shares, so little or nothing may be freed when another deployment has a similar image; using it again means pulling it from the registry again)
 - **Readable registry errors** — "tag not found", "access denied" and "registry unreachable" in one sentence, with the raw `skopeo`/`bootc` output one click away
 - **`/usr` drift warning** if a transient `bootc usr-overlay` is mounted
 
 The module only appears on hosts actually booted from a bootc image (`/run/ostree-booted`); RHEL package-mode hosts ship the `bootc` binary too, but there is nothing for it to manage there.
 
 The module is intentionally stateless — no `/var/lib/cockpit-bootc/`, no settings, no history. Everything shown is a live read of `bootc status`/`skopeo inspect`.
+
+## Rollback and /etc
+
+The rollback dialogs keep to one line each; this is the longer version.
+
+- **Two steps.** *Roll back* stages the previous deployment for the next boot
+  (`bootc rollback`); nothing changes until *Reboot to roll back*. *Cancel* on the
+  Rollback card un-queues it, with no reboot. If an update is staged, staging the
+  rollback discards it.
+- **/etc is per deployment.** Every deployment has its own `/etc`, a snapshot taken
+  when it was deployed. Rolling back boots the older deployment with *its* `/etc`:
+  configuration changes made on the newer one since then are not carried over, merged
+  or kept. Copy anything you need off the system before rebooting.
+- **Automatic updates can undo a rollback.** A rollback only reorders local
+  deployments; the registry still has the newer image. If the auto-update timer is on
+  in the rolled-back deployment, its next run downloads and applies that image and
+  reboots, which undoes the rollback. The switch is a mask in `/etc`, so turning it
+  off *before* rolling back does not carry over: after the reboot, check the
+  *Automatic updates* switch and turn it off there if you want to stay on the older
+  image.
+
+## Automatic updates
+
+The switch controls `bootc-fetch-apply-updates.timer`, which ships with bootc. Its
+service runs `bootc upgrade --apply --quiet`: it downloads a new image when there is
+one, applies it and **reboots, without asking**. It also applies and reboots into
+anything already staged (a download or switch you have not applied yet).
+
+- **Schedule** (the timer's defaults): about 1 hour after each boot, then about
+  8 hours after each run, each with up to 2 hours of random delay (`OnBootSec=1h`,
+  `OnUnitInactiveSec=8h`, `RandomizedDelaySec=2h`). The switch shows the next run.
+  Override it with a drop-in (`systemctl edit bootc-fetch-apply-updates.timer`).
+- **Off** stops and masks the timer. RHEL bootc images enable it from `/usr`, so a plain
+  `disable` would come back at the next boot. **On** unmasks and starts it.
+- **Off until reboot:** a timer stopped from the command line (or disabled by 1.1.1)
+  shows as Off with "Back on after reboot"; *Keep off* masks it.
+- The setting lives in `/etc`, so each deployment has its own (see above).
 
 ## Privilege model
 
@@ -107,9 +144,9 @@ see `TESTING.md` for setup and the login/navigation pattern.
 
 Translations: all UI strings go through `cockpit.gettext`, and the Makefile has
 the usual Cockpit `po/*.pot` extraction targets, but nothing is translated yet.
-`po/` has no `.pot` or `<lang>.po` files, and several sentences are still built
-from separate fragments, which translators can't reorder. Making them
-translatable is planned for 1.2.
+`po/` has no `.pot` or `<lang>.po` files yet. Each sentence the module shows is
+one translatable string (no sentence is built from fragments any more), so
+translators can reorder them.
 
 ## Troubleshooting
 

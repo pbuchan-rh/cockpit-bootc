@@ -1,0 +1,29 @@
+name: CI
+
+# Same checks as .gitea/workflows/ci.yml, on GitHub's hosted runners. The
+# Playwright suite is not run here: every spec needs a live bootc host.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # pkg/lib and friends come from cockpit's repo at the commit pinned in
+      # the Makefile (git fetch --depth=1 + git archive).
+      - run: make pkg/lib
+      - run: npm ci
+      - run: npm run build
+      - run: npm run eslint
+      - run: npm run stylelint

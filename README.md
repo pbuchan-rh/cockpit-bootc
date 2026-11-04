@@ -7,7 +7,7 @@ rollbacks.
 ## Features
 
 - **Image status** — booted, staged, and rollback state at a glance, with the actual tracked reference always labeled
-- **Check for updates, download, apply** — the check also runs once when the page opens, in the background, and fails quietly when the registry can't be reached; downloads show bytes and layers as they arrive (from `bootc --progress-fd`); soft or full reboot as needed; see `GOTCHAS.md` for why this doesn't rely on `bootc upgrade --check`
+- **Check for updates, download, apply** — the check also runs once when the page opens, in the background, and fails quietly when the registry cannot be reached; downloads show bytes and layers as they arrive (from `bootc --progress-fd`); soft or full reboot as needed; see `GOTCHAS.md` for why this doesn't rely on `bootc upgrade --check`
 - **Roll back**, in either direction; both steps name the version you go back to
 - **Switch images** — point at any registry/tag, preview version/digest/source before committing
 - **Cancel** a staged update or queued rollback cleanly — no reboot, no side effects

@@ -77,6 +77,7 @@ export const App = () => {
     const [error, setError] = useState(null);
     const [phase, setPhase] = useState(PHASE.IDLE);
     const [progress, setProgress] = useState([]);
+    const [pullEvent, setPullEvent] = useState(null); // latest structured progress event from bootc --progress-fd
     const [rebootModal, setRebootModal] = useState(null); // 'update' | 'rollback' | null
     const [autoUpdateStatus, setAutoUpdateStatus] = useState(null); // { unitFileState, activeState, on }, null = unknown
     const [nextAutoUpdateRun, setNextAutoUpdateRun] = useState(null); // epoch ms, or null if inactive/unscheduled
@@ -191,10 +192,11 @@ export const App = () => {
     async function handleDownloadUpdate() {
         setPhase(PHASE.DOWNLOADING);
         setProgress([]);
+        setPullEvent(null);
         setProgressKind('download');
         setError(null);
         try {
-            await stageUpdate(line => setProgress(p => [...p, line]));
+            await stageUpdate(line => setProgress(p => [...p, line]), setPullEvent);
             await loadStatus();
             setPhase(PHASE.DOWNLOADED);
             setUpdateAvailable(null);
@@ -307,13 +309,14 @@ export const App = () => {
         setSwitching(true);
         setError(null);
         setProgress([]);
+        setPullEvent(null);
         setProgressKind('switch');
         // Determine "no-op switch" from our own known state, not by parsing
         // bootc's English status text out of the streamed output — that
         // text is locale-dependent and could change with any bootc version.
         setSwitchUnchanged(trackedRef === ref);
         try {
-            await switchImage(ref, line => setProgress(p => [...p, line]));
+            await switchImage(ref, line => setProgress(p => [...p, line]), setPullEvent);
             await loadStatus();
             setUpdateAvailable(null);
         } catch (ex) {
@@ -537,13 +540,14 @@ export const App = () => {
                             }}
                         />
 
-                        {progress.length > 0 && (
+                        {(progress.length > 0 || pullEvent || phase === PHASE.DOWNLOADING || switching) && (
                             <ProgressLog
                                 lines={progress}
                                 running={phase === PHASE.DOWNLOADING || switching}
                                 kind={progressKind}
                                 unchanged={progressKind === 'switch' && switchUnchanged}
-                                onDismiss={() => { setProgress([]); setProgressKind(null); }}
+                                pullEvent={pullEvent}
+                                onDismiss={() => { setProgress([]); setPullEvent(null); setProgressKind(null); }}
                             />
                         )}
 

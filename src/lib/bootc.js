@@ -201,31 +201,121 @@ export async function checkForUpdates(trackedRef, bootedDigest) {
     return info.digest !== bootedDigest;
 }
 
+// bootc (1.15 has it as a hidden option) writes machine-readable progress as
+// JSON Lines to the file descriptor given by --progress-fd, which must be a
+// pipe ("error: ...: not a pipe" otherwise). Point fd 3 at a pipe into `cat`,
+// whose stdout is the spawn's stdout, and bootc's own stdout at stderr, which
+// err: "out" merges into the same stream. The JSON lines and bootc's few
+// human-readable lines then arrive interleaved, one whole line at a time, and
+// splitProgressStream() tells them apart. The image ref and every other
+// argument reach bootc as "$@", never through the shell's parser.
+const PROGRESS_SHELL = 'set -o pipefail; "$@" 3>&1 1>&2 | cat';
+
+function withProgressFd(bootcArgv) {
+    return ["bash", "-c", PROGRESS_SHELL, "bootc-progress", ...bootcArgv, "--progress-fd", "3"];
+}
+
+// An older bootc without --progress-fd fails argument parsing straight away.
+function progressFdUnsupported(text) {
+    return /unexpected argument '--progress-fd'/.test(text);
+}
+
+/**
+ * One progress event from bootc's JSON Lines stream, reduced to what the UI
+ * shows: { task, description, bytes, bytesTotal, steps, stepsTotal }.
+ * task is "pulling" (ProgressBytes: bytes/bytesTotal are what this pull
+ * downloads, layers already on disk excluded; steps/stepsTotal are layers
+ * fetched/needed), then "importing" and "staging" (ProgressSteps). Returns
+ * null for anything else (the Start event, other JSON, unparsable text).
+ */
+export function parseProgressEvent(line) {
+    if (!line.startsWith("{")) return null;
+    let ev;
+    try {
+        ev = JSON.parse(line);
+    } catch {
+        return null;
+    }
+    if (ev?.type !== "ProgressBytes" && ev?.type !== "ProgressSteps") return null;
+    return {
+        task: ev.task,
+        description: ev.description || "",
+        bytes: ev.bytes ?? null,
+        bytesTotal: ev.bytesTotal ?? null,
+        steps: ev.steps ?? 0,
+        stepsTotal: ev.stepsTotal ?? 0,
+    };
+}
+
+// cockpit's stream callback hands over arbitrary chunks, not lines. Buffer to
+// whole lines; send progress events to onEvent and everything else (minus
+// flock's own chatter) to onText.
+function splitProgressStream(onText, onEvent) {
+    let partial = "";
+    const handle = line => {
+        const ev = parseProgressEvent(line);
+        if (ev) {
+            if (onEvent) onEvent(ev);
+            return;
+        }
+        const shown = stripFlockLines(line);
+        if (onText && shown.trim()) onText(shown);
+    };
+    return {
+        push(chunk) {
+            const lines = (partial + chunk).split("\n");
+            partial = lines.pop();
+            lines.forEach(handle);
+        },
+        flush() {
+            if (partial) handle(partial);
+            partial = "";
+        },
+    };
+}
+
+// Run a pulling bootc command (upgrade --download-only, switch) with progress
+// events when bootc supports them, plain text otherwise.
+async function runPull(bootcArgv, onProgress, onEvent) {
+    const attempt = async useProgressFd => {
+        let streamedText = "";
+        const proc = cockpit.spawn(
+            withLock(useProgressFd ? withProgressFd(bootcArgv) : bootcArgv),
+            { superuser: "require", err: "out" }
+        );
+        const { reset, clear } = inactivityTimeout(proc, DOWNLOAD_INACTIVITY_TIMEOUT_MS);
+        const splitter = splitProgressStream(onProgress, onEvent);
+        proc.stream(chunk => {
+            reset();
+            streamedText += chunk;
+            splitter.push(chunk);
+        });
+        try {
+            const out = await proc;
+            splitter.flush();
+            return out;
+        } catch (ex) {
+            splitter.flush();
+            if (useProgressFd && progressFdUnsupported(streamedText)) return attempt(false);
+            // Keep the JSON progress lines out of the error details.
+            const text = streamedText.split("\n").filter(l => !parseProgressEvent(l))
+                    .join("\n");
+            throw asFriendlyError(ex, text);
+        } finally {
+            clear();
+        }
+    };
+    return attempt(true);
+}
+
 /**
  * Download and stage an update without committing it.
- * Streams all output (stdout + stderr) to onProgress.
+ * Streams bootc's text output to onProgress and, when bootc supports
+ * --progress-fd, structured progress (see parseProgressEvent) to onEvent.
  * Call applyUpdate() to reboot into the staged image.
  */
-export async function stageUpdate(onProgress) {
-    let streamedText = "";
-    const proc = cockpit.spawn(
-        withLock(["bootc", "upgrade", "--download-only"]),
-        { superuser: "require", err: "out" }
-    );
-    const { reset, clear } = inactivityTimeout(proc, DOWNLOAD_INACTIVITY_TIMEOUT_MS);
-    proc.stream(line => {
-        reset();
-        streamedText += line;
-        const shown = stripFlockLines(line);
-        if (onProgress && shown.trim()) onProgress(shown);
-    });
-    try {
-        return await proc;
-    } catch (ex) {
-        throw asFriendlyError(ex, streamedText);
-    } finally {
-        clear();
-    }
+export async function stageUpdate(onProgress, onEvent) {
+    return runPull(["bootc", "upgrade", "--download-only"], onProgress, onEvent);
 }
 
 /**
@@ -510,24 +600,6 @@ export async function inspectImage(ref) {
  * Streams progress (layer pull, deploy) the same way stageUpdate() does —
  * a registry pull can take a while with nothing else on screen otherwise.
  */
-export async function switchImage(ref, onProgress) {
-    let streamedText = "";
-    const proc = cockpit.spawn(
-        withLock(["bootc", "switch", "--transport", "registry", ref]),
-        { superuser: "require", err: "out" }
-    );
-    const { reset, clear } = inactivityTimeout(proc, DOWNLOAD_INACTIVITY_TIMEOUT_MS);
-    proc.stream(line => {
-        reset();
-        streamedText += line;
-        const shown = stripFlockLines(line);
-        if (onProgress && shown.trim()) onProgress(shown);
-    });
-    try {
-        return await proc;
-    } catch (ex) {
-        throw asFriendlyError(ex, streamedText);
-    } finally {
-        clear();
-    }
+export async function switchImage(ref, onProgress, onEvent) {
+    return runPull(["bootc", "switch", "--transport", "registry", ref], onProgress, onEvent);
 }

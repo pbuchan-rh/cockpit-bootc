@@ -167,6 +167,10 @@
     margin-block-start: var(--pf-t--global--spacer--md);
 }
 
+.ct-pull-progress {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
 .ct-progress-log {
     max-height: 16rem;
     overflow-y: auto;

@@ -141,9 +141,10 @@ the "Image" reference field in the same cards has the identical no-copy gap
 work), but it's a convenience gap, not a broken one like the digest was, so
 it's logged as a known follow-up rather than bundled into this fix.
 
-**`@patternfly/react-table` is not installed** (deliberately, to keep the
-dependency footprint lean), and `patternfly-base.css` only carries the design
-tokens/reset — not per-component styles. A class name like `.pf-v6-c-table` or
+**PatternFly component CSS only ships with the imported component.**
+`patternfly-base.css` only carries the design tokens/reset — not per-component
+styles. (`@patternfly/react-table` was not installed when `BootHistory` was
+written; it is now, and `DeploymentList` uses it.) A class name like `.pf-v6-c-table` or
 `.pf-v6-c-tabs` only has real CSS behind it if you actually `import` the
 corresponding React component (esbuild bundles a component's CSS only when its JS
 is imported). We hit this for `BootHistory`'s table (had to write custom

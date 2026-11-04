@@ -1,7 +1,6 @@
 import cockpit from 'cockpit';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
-import { AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
+import { Alert, AlertActionLink } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
@@ -75,7 +74,7 @@ const PHASE = {
     IDLE: 'idle',
     CHECKING: 'checking',
     DOWNLOADING: 'downloading',
-    DOWNLOADED: 'downloaded',     // staged, awaiting reboot confirm
+    DOWNLOADED: 'downloaded', // staged, awaiting reboot confirm
     REBOOTING: 'rebooting',
 };
 
@@ -148,9 +147,12 @@ export const App = () => {
 
         // Doesn't require root — load it independently so a permission
         // failure on getStatus() below doesn't block it too.
-        getAutoUpdateStatus().then(v => { if (!isStale()) setAutoUpdateStatus(v); }).catch(() => {});
-        getNextAutoUpdateRun().then(v => { if (!isStale()) setNextAutoUpdateRun(v); }).catch(() => {});
-        getDeploymentList().then(v => { if (!isStale()) setDeployments(v); }).catch(() => {});
+        getAutoUpdateStatus().then(v => { if (!isStale()) setAutoUpdateStatus(v); })
+                .catch(() => {});
+        getNextAutoUpdateRun().then(v => { if (!isStale()) setNextAutoUpdateRun(v); })
+                .catch(() => {});
+        getDeploymentList().then(v => { if (!isStale()) setDeployments(v); })
+                .catch(() => {});
 
         try {
             const s = await getStatus();
@@ -199,7 +201,8 @@ export const App = () => {
     useEffect(() => {
         // An unreadable marker isn't proof of anything — fall back to what
         // bootc status says (booted: null) instead of hiding the UI.
-        isOstreeBooted().then(setMarkerPresent).catch(() => setMarkerPresent(true));
+        isOstreeBooted().then(setMarkerPresent)
+                .catch(() => setMarkerPresent(true));
     }, []);
 
     // quiet: the automatic check on page load. It fails silently (offline,
@@ -215,7 +218,7 @@ export const App = () => {
         setUpdateAvailable(null); // hide the stale badge while this check is in flight
         try {
             const available = await checkForUpdates(trackedRef, status.booted.image?.imageDigest,
-                                                     quiet ? AUTO_CHECK_TIMEOUT_MS : undefined);
+                                                    quiet ? AUTO_CHECK_TIMEOUT_MS : undefined);
             if (!isCurrent()) return;
             setUpdateAvailable(available);
             setLastChecked(new Date());
@@ -635,7 +638,7 @@ export const App = () => {
                             preview={preview}
                             previewError={previewError}
                             onPreview={handlePreview}
-                            onDismissPreview={() => { setPreview(null); setPreviewError(null); }}
+                            onDismissPreview={() => { setPreview(null); setPreviewError(null) }}
                             onRefChange={value => {
                                 // Any edit invalidates whatever's currently displayed — a preview
                                 // for the old text shouldn't keep looking like it describes the new
@@ -655,7 +658,7 @@ export const App = () => {
                                 kind={progressKind}
                                 unchanged={progressKind === 'switch' && switchUnchanged}
                                 pullEvent={pullEvent}
-                                onDismiss={() => { setProgress([]); setPullEvent(null); setProgressKind(null); }}
+                                onDismiss={() => { setProgress([]); setPullEvent(null); setProgressKind(null) }}
                             />
                         )}
 
@@ -700,8 +703,10 @@ export const App = () => {
             >
                 <ModalHeader
                     title={
-                        rebootModal === 'update' ? _("Apply update and reboot?")
-                            : rebootModal === 'overlay' ? _("Reboot to clear /usr overlay?")
+                        rebootModal === 'update'
+                            ? _("Apply update and reboot?")
+                            : rebootModal === 'overlay'
+                                ? _("Reboot to clear /usr overlay?")
                                 : rollbackTarget ? cockpit.format(_("Reboot to roll back to $0?"), rollbackTarget) : _("Reboot to roll back?")
                     }
                 />
@@ -734,10 +739,14 @@ export const App = () => {
             >
                 <ModalHeader
                     title={
-                        confirmAction?.action === 'switch' ? _("Switch image?")
-                            : confirmAction?.action === 'autoupdate-enable' ? _("Enable automatic updates?")
-                                : confirmAction?.action === 'cancel-staged' ? _("Discard staged update?")
-                                    : confirmAction?.action === 'delete-deployment' ? cockpit.format(_("Delete deployment $0?"), confirmAction.index)
+                        confirmAction?.action === 'switch'
+                            ? _("Switch image?")
+                            : confirmAction?.action === 'autoupdate-enable'
+                                ? _("Enable automatic updates?")
+                                : confirmAction?.action === 'cancel-staged'
+                                    ? _("Discard staged update?")
+                                    : confirmAction?.action === 'delete-deployment'
+                                        ? cockpit.format(_("Delete deployment $0?"), confirmAction.index)
                                         : rollbackTarget ? cockpit.format(_("Roll back to $0?"), rollbackTarget) : _("Stage rollback?")
                     }
                 />
@@ -749,10 +758,12 @@ export const App = () => {
                             : confirmAction?.action === 'cancel-staged'
                                 ? _("The staged update will be discarded. No reboot happens, and the booted image is unaffected — you'll need to check/download or switch again to get it back.")
                                 : confirmAction?.action === 'delete-deployment'
-                                    ? <>
-                                        <strong>{deleteTargetName}</strong>
-                                        {' '}{_("will be permanently deleted. Disk space is freed only for content no other deployment shares, so if another deployment has the same or a similar image, little or nothing may be freed. This cannot be undone: to use this image again, it has to be pulled from the registry again.")}
-                                    </>
+                                    ? (
+                                        <>
+                                            <strong>{deleteTargetName}</strong>
+                                            {' '}{_("will be permanently deleted. Disk space is freed only for content no other deployment shares, so if another deployment has the same or a similar image, little or nothing may be freed. This cannot be undone: to use this image again, it has to be pulled from the registry again.")}
+                                        </>
+                                    )
                                     : status?.staged
                                         ? <>{_("The previous image will be staged for next boot. This will also")} <strong>{_("discard the currently staged update")}</strong> ({status.staged.image?.version || _("unknown version")}). {_("Rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
                                         : <>{_("The previous image will be staged for next boot. Nothing is applied until you reboot, but note that rolling back also reverts")} <code>/etc</code> {_("to that image's frozen snapshot — any configuration changes made since then will be lost.")}{rollbackAutoUpdateNote}</>
@@ -762,18 +773,29 @@ export const App = () => {
                     <Button
                         variant={confirmAction?.action === 'delete-deployment' ? 'danger' : 'primary'}
                         onClick={() => {
-                            if (confirmAction?.action === 'switch') handleSwitchImage(confirmAction.ref);
-                            else if (confirmAction?.action === 'autoupdate-enable') { setConfirmAction(null); handleAutoUpdateToggle(true); }
-                            else if (confirmAction?.action === 'cancel-staged') handleCancelStagedUpdate();
-                            else if (confirmAction?.action === 'delete-deployment') handleDeleteDeployment(confirmAction.index, confirmAction.checksum);
-                            else handleRollback();
+                            if (confirmAction?.action === 'switch') {
+                                handleSwitchImage(confirmAction.ref);
+                            } else if (confirmAction?.action === 'autoupdate-enable') {
+                                setConfirmAction(null);
+                                handleAutoUpdateToggle(true);
+                            } else if (confirmAction?.action === 'cancel-staged') {
+                                handleCancelStagedUpdate();
+                            } else if (confirmAction?.action === 'delete-deployment') {
+                                handleDeleteDeployment(confirmAction.index, confirmAction.checksum);
+                            } else {
+                                handleRollback();
+                            }
                         }}
                         isDisabled={!adminAllowed}
                     >
-                        {confirmAction?.action === 'switch' ? _("Switch")
-                            : confirmAction?.action === 'autoupdate-enable' ? _("Enable")
-                                : confirmAction?.action === 'cancel-staged' ? _("Discard")
-                                    : confirmAction?.action === 'delete-deployment' ? _("Delete")
+                        {confirmAction?.action === 'switch'
+                            ? _("Switch")
+                            : confirmAction?.action === 'autoupdate-enable'
+                                ? _("Enable")
+                                : confirmAction?.action === 'cancel-staged'
+                                    ? _("Discard")
+                                    : confirmAction?.action === 'delete-deployment'
+                                        ? _("Delete")
                                         : _("Stage rollback")}
                     </Button>
                     <Button variant="secondary" onClick={closeConfirmModal}>

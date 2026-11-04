@@ -74,10 +74,11 @@ export const DeploymentList = ({ deployments, versionByChecksum, diskUsage, pinn
                                     <FlexItem>
                                         {d.slot !== null || d.pinned
                                             ? (
-                                                <Tooltip content={
-                                                    d.slot !== null ? _("Can't delete a deployment in active use")
-                                                        : _("Unpin before deleting")
-                                                }>
+                                                <Tooltip
+                                                    content={d.slot !== null
+                                                        ? _("Can't delete a deployment in active use")
+                                                        : _("Unpin before deleting")}
+                                                >
                                                     <Button
                                                         className="ct-deployment-action-btn"
                                                         variant="danger"

@@ -39,57 +39,57 @@ export const SwitchImage = ({
 
     return (
         <>
-                <Flex alignItems={{ default: 'alignItemsCenter' }} className="ct-switch-row">
-                    <FlexItem>
-                        <label htmlFor="switch-image-ref" className="ct-switch-label">{_("Track a different image:")}</label>
-                    </FlexItem>
-                    <FlexItem grow={{ default: 'grow' }}>
-                        <TextInput
-                            id="switch-image-ref"
-                            type="text"
-                            value={ref}
-                            onChange={(_event, value) => updateRef(value)}
-                            onKeyDown={event => {
-                                if (event.key === 'Enter' && !disabled && !previewing && looksLikeImageRef(ref)) {
-                                    event.preventDefault();
-                                    onPreview(ref);
-                                }
-                            }}
-                            placeholder={_("registry.example.com/namespace/image:tag")}
-                            aria-label={_("Image reference")}
-                        />
-                    </FlexItem>
-                    <FlexItem>
-                        <Button
-                            variant="secondary"
-                            onClick={() => (preview || previewError) ? onDismissPreview() : onPreview(ref)}
-                            isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
-                            isLoading={previewing}
-                        >
-                            {previewing ? _("Inspecting…") : (preview || previewError) ? _("Hide inspection") : _("Inspect")}
-                        </Button>
-                    </FlexItem>
-                    <FlexItem>
-                        <Button
-                            variant={preview ? "primary" : "secondary"}
-                            onClick={() => onSwitch(ref)}
-                            isDisabled={disabled || switchDisabled || switching || !ref.trim() || !preview}
-                            isLoading={switching}
-                        >
-                            {switching ? _("Switching…") : _("Switch")}
-                        </Button>
-                    </FlexItem>
-                </Flex>
+            <Flex alignItems={{ default: 'alignItemsCenter' }} className="ct-switch-row">
+                <FlexItem>
+                    <label htmlFor="switch-image-ref" className="ct-switch-label">{_("Track a different image:")}</label>
+                </FlexItem>
+                <FlexItem grow={{ default: 'grow' }}>
+                    <TextInput
+                        id="switch-image-ref"
+                        type="text"
+                        value={ref}
+                        onChange={(_event, value) => updateRef(value)}
+                        onKeyDown={event => {
+                            if (event.key === 'Enter' && !disabled && !previewing && looksLikeImageRef(ref)) {
+                                event.preventDefault();
+                                onPreview(ref);
+                            }
+                        }}
+                        placeholder={_("registry.example.com/namespace/image:tag")}
+                        aria-label={_("Image reference")}
+                    />
+                </FlexItem>
+                <FlexItem>
+                    <Button
+                        variant="secondary"
+                        onClick={() => (preview || previewError) ? onDismissPreview() : onPreview(ref)}
+                        isDisabled={disabled || previewing || (!(preview || previewError) && !looksLikeImageRef(ref))}
+                        isLoading={previewing}
+                    >
+                        {previewing ? _("Inspecting…") : (preview || previewError) ? _("Hide inspection") : _("Inspect")}
+                    </Button>
+                </FlexItem>
+                <FlexItem>
+                    <Button
+                        variant={preview ? "primary" : "secondary"}
+                        onClick={() => onSwitch(ref)}
+                        isDisabled={disabled || switchDisabled || switching || !ref.trim() || !preview}
+                        isLoading={switching}
+                    >
+                        {switching ? _("Switching…") : _("Switch")}
+                    </Button>
+                </FlexItem>
+            </Flex>
 
-                {previewError && (
-                    <div className="ct-switch-preview-error-block">
-                        <p className="ct-switch-preview-error">{cockpit.format(_("Could not inspect image: $0"), previewError.message)}</p>
-                        <ErrorDetails details={previewError.details} />
-                    </div>
-                )}
+            {previewError && (
+                <div className="ct-switch-preview-error-block">
+                    <p className="ct-switch-preview-error">{cockpit.format(_("Could not inspect image: $0"), previewError.message)}</p>
+                    <ErrorDetails details={previewError.details} />
+                </div>
+            )}
 
-                {preview && !previewError && (
-                    <div className="ct-switch-preview-block">
+            {preview && !previewError && (
+                <div className="ct-switch-preview-block">
                     <DescriptionList isCompact isHorizontal className="ct-switch-preview">
                         <DescriptionListGroup>
                             <DescriptionListTerm>{_("Version")}</DescriptionListTerm>
@@ -142,8 +142,8 @@ export const SwitchImage = ({
                             </DescriptionListGroup>
                         )}
                     </DescriptionList>
-                    </div>
-                )}
+                </div>
+            )}
         </>
     );
 };

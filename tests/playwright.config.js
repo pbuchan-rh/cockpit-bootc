@@ -5,6 +5,8 @@ require('dotenv').config({ path: __dirname + '/.env', quiet: true });
 module.exports = defineConfig({
     testDir: __dirname,
     testMatch: '**/*.spec.js',
+    // tests/adhoc/ holds measuring scripts, not the suite: BOOTC_ADHOC=1 to run them.
+    testIgnore: process.env.BOOTC_ADHOC === '1' ? [] : ['**/adhoc/**'],
     timeout: 120000,
     expect: { timeout: 30000 },
     fullyParallel: false, // Cockpit session is shared state

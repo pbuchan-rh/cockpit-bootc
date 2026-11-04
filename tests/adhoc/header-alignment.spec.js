@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('../helpers/cockpit.js');
 
-// Ad-hoc (no assertions about layout): prints the left edges of the header
+// Ad-hoc (BOOTC_ADHOC=1; no assertions about layout): prints the left edges of the header
 // title and of the body content below it, and the actions block position,
 // to settle the header-alignment item (usability review L4: "the header
 // title is indented about 47 px relative to the body below it").

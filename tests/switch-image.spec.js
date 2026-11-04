@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
-const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON } = require('./helpers/host.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, TIMER_ACTIVE_SKIP_REASON, timerActive } = require('./helpers/host.js');
 
 const ORIGINAL_REF = '10.0.0.208:5000/bootc-cockpit-demo:latest';
 const OTHER_TAG_REF = '10.0.0.208:5000/bootc-cockpit-demo:1.0';
@@ -61,6 +61,7 @@ test.describe('switch image', () => {
 
     test('Switch stages the new image, then switching back restores original state', async ({ page }) => {
         test.skip(!DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON);
+        test.skip(timerActive(), TIMER_ACTIVE_SKIP_REASON);
         // --- Switch to the other tag ---
         await page.fill('#switch-image-ref', OTHER_TAG_REF);
         await page.locator('button:has-text("Inspect")').click();

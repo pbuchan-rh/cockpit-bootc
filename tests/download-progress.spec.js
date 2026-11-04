@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
-const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, bootcStatus, hostSudo } = require('./helpers/host.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, TIMER_ACTIVE_SKIP_REASON, timerActive, bootcStatus, hostSudo } = require('./helpers/host.js');
 
 // A pull shows real progress from bootc's --progress-fd JSON stream: a bar
 // with bytes downloaded of the total still to fetch, and layers done of
@@ -29,6 +29,7 @@ test.describe('download progress', () => {
 
     test('switching to an image not on disk shows bytes and layers as they download', async ({ page }) => {
         test.setTimeout(10 * 60000);
+        test.skip(timerActive(), TIMER_ACTIVE_SKIP_REASON);
         const before = bootcStatus();
         expect(before.staged, 'nothing may be staged before this test').toBeNull();
         const originalRef = before.booted.image.image.image;

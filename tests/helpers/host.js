@@ -54,4 +54,17 @@ function timerWantedBy() {
     return ssh('systemctl show --property=WantedBy --value bootc-fetch-apply-updates.timer').trim();
 }
 
-module.exports = { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, sshHost, hostSudo, bootcStatus, timerState, timerWantedBy };
+// Specs that stage a deployment (download, switch) must not run while the
+// auto-update timer is active: its service is `bootc upgrade --apply`, and a
+// run that finds anything staged applies it and reboots the host (happened
+// 2026-11-04: a staged :1.0 was applied ~10 s after staging). Stop the timer
+// for the run (`systemctl stop`, not mask) and start it again afterwards.
+const TIMER_ACTIVE_SKIP_REASON = 'stages a deployment; stop bootc-fetch-apply-updates.timer first or its next run applies it and reboots';
+function timerActive() {
+    return timerState().activeState === 'active';
+}
+
+module.exports = {
+    DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, TIMER_ACTIVE_SKIP_REASON,
+    sshHost, hostSudo, bootcStatus, timerState, timerWantedBy, timerActive,
+};

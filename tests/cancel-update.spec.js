@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('./helpers/cockpit.js');
-const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, bootcStatus } = require('./helpers/host.js');
+const { DESTRUCTIVE, DESTRUCTIVE_SKIP_REASON, TIMER_ACTIVE_SKIP_REASON, timerActive, bootcStatus } = require('./helpers/host.js');
 
 // cancelStagedUpdate() works around bootc having no direct "discard the
 // stage" command by calling `bootc rollback` twice (a toggle) — verify the
@@ -19,6 +19,7 @@ test.describe('cancel staged update', () => {
     });
 
     test('Download then Cancel returns to neutral with no rollback queued', async ({ page }) => {
+        test.skip(timerActive(), TIMER_ACTIVE_SKIP_REASON);
         await page.locator('button:has-text("Check for Updates")').click();
         await expect(page.locator('button:has-text("Checking")')).toHaveCount(0, { timeout: 30000 });
 

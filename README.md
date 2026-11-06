@@ -87,16 +87,10 @@ RUN dnf -y copr enable -y pbuchan-rh/cockpit-bootc rhel-10-x86_64 && \
     dnf clean all
 ```
 
-This is the exact block we use to build our own bootc appliance image. Two
-things worth knowing:
-
-- Name the chroot explicitly (`rhel-10-x86_64`, `centos-stream-10-x86_64`, or
-  `fedora-43-x86_64`/`fedora-44-x86_64`). `dnf copr enable` with no chroot
-  argument can misdetect as `epel-10-x86_64` and fail, since that chroot
-  doesn't exist in this project.
-- Disable the COPR repo again once installed. bootc images update by pulling
-  a whole new image, not `dnf update` on the deployed host, so there's no
-  reason to leave a third-party repo enabled on a shipped appliance.
+This is the exact block we use to build our own bootc appliance image. It
+disables the COPR repo again once installed: bootc images update by pulling a
+whole new image, not `dnf update` on the deployed host, so there's no reason to
+leave a third-party repo enabled on a shipped appliance.
 
 Rebuild and push your image as usual — no separate install step is needed on
 the deployed host.
